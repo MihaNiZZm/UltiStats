@@ -4,18 +4,18 @@ import java.util.UUID
 
 data class Player(
     val id: UUID?,
+    val teamId: UUID,
     val number: Int?,
     val firstName: String,
     val lastName: String,
-    val teamId: UUID,
 ) {
     companion object {
         fun unknown(teamId: UUID) = Player (
             id = null,
+            teamId = teamId,
             number = null,
             firstName = "N/A",
             lastName = "N/A",
-            teamId = teamId,
         )
     }
 }

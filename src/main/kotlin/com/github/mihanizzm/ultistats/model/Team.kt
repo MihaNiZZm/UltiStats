@@ -7,4 +7,5 @@ data class Team(
     val name: String,
     val players: List<Player>,
 ) {
+    fun hasPlayer(playerId: UUID): Boolean = players.map { it.id }.contains(playerId)
 }

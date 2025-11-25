@@ -1,9 +1,10 @@
 package com.github.mihanizzm.ultistats.model.events
 
-import java.util.UUID
+import java.util.*
 
 data class TimeoutEndEvent(
-    override val teamId: UUID,
+    override val team: UUID,
     override val time: Double,
-    override val type: EventType = EventType.TIMEOUT_END,
-) : Event
+) : Event, TeamEvent {
+    override val type: EventType = EventType.TIMEOUT_END
+}

@@ -7,6 +7,7 @@ data class TeamAttackStatistics(
     val allPasses: Int = 0,
     val pulls: Int = 0,
     val bricks: Int = 0,
+    val possessions: Int = 0,
     val possessionTime: Double = 0.0,
-    val percentOfPossession: Double = 0.0
+    val percentOfPossession: Double = 0.0,
 )

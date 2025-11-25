@@ -4,7 +4,7 @@ import java.util.UUID
 
 data class TeamStatistics(
     val teamId: UUID,
-    val attack: TeamAttackStatistics,
-    val defense: DefenseStatistics,
-    val system: SystemStatistics,
+    val attack: TeamAttackStatistics = TeamAttackStatistics(),
+    val defense: DefenseStatistics = DefenseStatistics(),
+    val system: SystemStatistics = SystemStatistics(),
 )

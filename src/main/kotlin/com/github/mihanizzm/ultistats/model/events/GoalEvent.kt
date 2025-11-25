@@ -5,12 +5,14 @@ import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
 import java.util.UUID
 
-class TurnoverEvent(
-    override val player: UUID,
-    override val team: UUID,
+data class GoalEvent(
+    override val fromPlayer: UUID,
+    override val toPlayer: UUID,
+    override val fromTeam: UUID,
+    override val toTeam: UUID,
     override val time: Double,
-) : OnePlayerEvent, StatAffectingEvent {
-    override val type: EventType = EventType.TURNOVER
+) : TwoPlayerEvent, StatAffectingEvent {
+    override val type: EventType = EventType.GOAL
 
     override fun apply(stats: MatchStatistics): MatchStatistics = changeStatisticsByValue(stats, 1)
 
@@ -23,8 +25,17 @@ class TurnoverEvent(
         val newPlayerStats = oldPlayerStats.asSequence()
             .map { stat ->
                 when (stat.playerId) {
-                    player -> stat.copy(
-                        attack = stat.attack.copy(discPossessions = stat.attack.discPossessions + value)
+                    fromPlayer -> stat.copy(
+                        attack = stat.attack.copy(
+                            assists = stat.attack.assists + value,
+                            passes = stat.attack.passes + value,
+                        )
+                    )
+                    toPlayer -> stat.copy(
+                        attack = stat.attack.copy(
+                            catches = stat.attack.catches + value,
+                            goals = stat.attack.goals + value,
+                        )
                     )
                     else -> stat
                 }
@@ -34,8 +45,12 @@ class TurnoverEvent(
         val newTeamStats = oldTeamStats.asSequence()
             .map { stat ->
                 when (stat.teamId) {
-                    team -> stat.copy(
-                        attack = stat.attack.copy(possessions = stat.attack.possessions + value)
+                    fromTeam -> stat.copy(
+                        attack = stat.attack.copy(
+                            allPasses = stat.attack.allPasses + value,
+                            completePasses = stat.attack.completePasses + value,
+                            score = stat.attack.score + value,
+                        )
                     )
                     else -> stat
                 }

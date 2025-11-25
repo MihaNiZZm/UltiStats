@@ -5,12 +5,12 @@ import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
 import java.util.UUID
 
-class TurnoverEvent(
+data class DropEvent(
     override val player: UUID,
     override val team: UUID,
     override val time: Double,
 ) : OnePlayerEvent, StatAffectingEvent {
-    override val type: EventType = EventType.TURNOVER
+    override val type: EventType = EventType.DROP
 
     override fun apply(stats: MatchStatistics): MatchStatistics = changeStatisticsByValue(stats, 1)
 
@@ -24,7 +24,7 @@ class TurnoverEvent(
             .map { stat ->
                 when (stat.playerId) {
                     player -> stat.copy(
-                        attack = stat.attack.copy(discPossessions = stat.attack.discPossessions + value)
+                        attack = stat.attack.copy(drops = stat.attack.drops + value)
                     )
                     else -> stat
                 }
@@ -35,7 +35,7 @@ class TurnoverEvent(
             .map { stat ->
                 when (stat.teamId) {
                     team -> stat.copy(
-                        attack = stat.attack.copy(possessions = stat.attack.possessions + value)
+                        attack = stat.attack.copy(allPasses = stat.attack.allPasses + value)
                     )
                     else -> stat
                 }

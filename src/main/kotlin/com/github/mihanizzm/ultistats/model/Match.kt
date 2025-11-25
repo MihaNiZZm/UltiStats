@@ -11,5 +11,4 @@ data class Match(
     val events: MutableList<Event> = mutableListOf(),
     val startTime: Instant? = null,
     val endTime: Instant? = null,
-    val statistics: MatchStatistics,
 )

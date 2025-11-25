@@ -5,4 +5,6 @@ import java.util.UUID
 sealed interface TwoPlayerEvent : Event {
     val fromPlayer: UUID
     val toPlayer: UUID
+    val fromTeam: UUID
+    val toTeam: UUID
 }
