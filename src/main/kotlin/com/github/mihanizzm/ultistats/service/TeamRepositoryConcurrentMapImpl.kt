@@ -2,7 +2,7 @@ package com.github.mihanizzm.ultistats.service
 
 import com.github.mihanizzm.ultistats.model.Team
 import org.springframework.stereotype.Service
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 @Service

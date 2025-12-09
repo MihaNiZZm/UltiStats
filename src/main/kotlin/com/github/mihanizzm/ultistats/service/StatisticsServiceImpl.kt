@@ -5,7 +5,7 @@ import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
 import org.springframework.stereotype.Service
-import java.util.*
+import java.util.UUID
 
 @Service
 @Suppress("unused")
@@ -29,7 +29,7 @@ class StatisticsServiceImpl(
     }
 
     override fun calculateStatistics(matchId: UUID): MatchStatistics {
-        val match = matchService.get(matchId)
+        val match = matchService.getOrThrow(matchId)
         val teamIds = match.teams.map { it.id }
 
         return match.events.fold(emptyStatistics(teamIds)) { stat, event ->

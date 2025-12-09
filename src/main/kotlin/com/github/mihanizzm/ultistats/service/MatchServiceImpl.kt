@@ -5,7 +5,6 @@ import com.github.mihanizzm.ultistats.model.Match
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.UUID
-import java.util.logging.Logger
 
 @Service
 @Suppress("unused")
@@ -14,17 +13,10 @@ class MatchServiceImpl(
 ) : MatchService {
     private val log = LoggerFactory.getLogger(MatchServiceImpl::class.java)
 
-    override fun get(matchId: UUID): Match {
-        val match = matchRepository.get(matchId)
+    override fun get(matchId: UUID): Match? = matchRepository.get(matchId)
 
-        if (match == null) {
-            val message = "Couldn't find match with id $matchId"
-            log.info(message)
-            throw EntityNotFoundException(message)
-        }
-
-        return match
-    }
+    override fun getOrThrow(matchId: UUID): Match = matchRepository.get(matchId)
+        ?: throw EntityNotFoundException("Match $matchId not found")
 
     override fun create(match: Match) = matchRepository.save(match)
 

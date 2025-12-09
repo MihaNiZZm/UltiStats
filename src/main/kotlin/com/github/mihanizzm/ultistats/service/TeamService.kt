@@ -1,10 +1,10 @@
 package com.github.mihanizzm.ultistats.service
 
 import com.github.mihanizzm.ultistats.model.Team
-import java.util.*
+import java.util.UUID
 
 interface TeamService {
-    fun get(teamId: UUID): Team
+    fun get(teamId: UUID): Team?
 
     fun create(team: Team)
 
