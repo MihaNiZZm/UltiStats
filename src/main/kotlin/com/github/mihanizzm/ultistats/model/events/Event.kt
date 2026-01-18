@@ -1,6 +1,8 @@
 package com.github.mihanizzm.ultistats.model.events
 
+import java.time.Instant
+
 sealed interface Event {
-    val time: Double // виртуальное время матча в секундах
+    val realTimestamp: Instant
     val type: EventType
 }

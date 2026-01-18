@@ -6,5 +6,5 @@ data class TeamStatistics(
     val teamId: UUID,
     val attack: TeamAttackStatistics = TeamAttackStatistics(),
     val defense: DefenseStatistics = DefenseStatistics(),
-    val system: SystemStatistics = SystemStatistics(),
+    val time: TeamTimeStatistics = TeamTimeStatistics(),
 )

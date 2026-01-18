@@ -3,12 +3,13 @@ package com.github.mihanizzm.ultistats.model.events
 import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
+import java.time.Instant
 import java.util.UUID
 
 data class PullEvent(
     override val player: UUID,
     override val team: UUID,
-    override val time: Double,
+    override val realTimestamp: Instant,
 ) : OnePlayerEvent, StatAffectingEvent {
     override val type: EventType = EventType.PULL
 
