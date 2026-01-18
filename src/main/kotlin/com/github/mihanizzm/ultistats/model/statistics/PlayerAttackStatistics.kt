@@ -1,6 +1,6 @@
 package com.github.mihanizzm.ultistats.model.statistics
 
-data class AttackStatistics(
+data class PlayerAttackStatistics(
     val passes: Int = 0,
     val catches: Int = 0,
     val assists: Int = 0,

@@ -3,6 +3,7 @@ package com.github.mihanizzm.ultistats.model.events
 import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
+import java.time.Instant
 import java.util.UUID
 
 data class BlockFieldEvent(
@@ -10,7 +11,7 @@ data class BlockFieldEvent(
     override val toPlayer: UUID,
     override val fromTeam: UUID,
     override val toTeam: UUID,
-    override val time: Double,
+    override val realTimestamp: Instant,
 ) : TwoPlayerEvent, StatAffectingEvent {
     override val type: EventType = EventType.BLOCK_FIELD
 

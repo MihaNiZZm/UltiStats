@@ -17,6 +17,7 @@ import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 @Suppress("NonAsciiCharacters")
 class StatisticsServiceImplTest : MatchAbstractTest() {
@@ -47,7 +48,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перебития в поле записана`() {
         MATCH.events.add(
-            BlockFieldEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], 15.0),
+            BlockFieldEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -72,7 +73,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -80,7 +81,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика кэллахана записана`() {
         MATCH.events.add(
-            CallahanEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], 15.0),
+            CallahanEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -90,7 +91,10 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(callahanDrops = 1))
-                        UUIDS[7] -> it.copy(defense = it.defense.copy(callahans = 1))
+                        UUIDS[7] -> it.copy(
+                            defense = it.defense.copy(callahans = 1),
+                            attack = it.attack.copy(goals = 1)
+                        )
                         else -> it
                     }
                 },
@@ -99,13 +103,16 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.teamId) {
                         UUIDS[0] -> it.copy(attack = it.attack.copy(allPasses = 1))
-                        UUIDS[1] -> it.copy(defense = it.defense.copy(callahans = 1))
+                        UUIDS[1] -> it.copy(
+                            defense = it.defense.copy(callahans = 1),
+                            attack = it.attack.copy(score = 1)
+                        )
                         else -> it
                     }
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -113,7 +120,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перебития на маркере записана`() {
         MATCH.events.add(
-            BlockMarkerEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], 15.0),
+            BlockMarkerEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -138,7 +145,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -146,7 +153,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перехвата записана`() {
         MATCH.events.add(
-            InterceptionEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], 15.0),
+            InterceptionEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -171,7 +178,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -179,7 +186,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика гола записана`() {
         MATCH.events.add(
-            GoalEvent(UUIDS[2], UUIDS[3], UUIDS[0], UUIDS[0], 15.0),
+            GoalEvent(UUIDS[2], UUIDS[3], UUIDS[0], UUIDS[0], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -213,7 +220,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -221,7 +228,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика паса записана`() {
         MATCH.events.add(
-            PassEvent(UUIDS[2], UUIDS[3], UUIDS[0], UUIDS[0], 15.0),
+            PassEvent(UUIDS[2], UUIDS[3], UUIDS[0], UUIDS[0], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -248,7 +255,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -256,7 +263,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика брика записана`() {
         MATCH.events.add(
-            BrickEvent(UUIDS[2], UUIDS[0], 15.0),
+            BrickEvent(UUIDS[2], UUIDS[0], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -279,7 +286,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -287,7 +294,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика пулла записана`() {
         MATCH.events.add(
-            PullEvent(UUIDS[2], UUIDS[0], 15.0),
+            PullEvent(UUIDS[2], UUIDS[0], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -310,7 +317,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -318,7 +325,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перехода владения записана`() {
         MATCH.events.add(
-            TurnoverEvent(UUIDS[2], UUIDS[0], 15.0),
+            TurnoverEvent(UUIDS[2], UUIDS[0], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -341,7 +348,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -349,7 +356,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика дропа записана`() {
         MATCH.events.add(
-            DropEvent(UUIDS[2], UUIDS[0], 15.0),
+            DropEvent(UUIDS[2], UUIDS[0], Instant.now()),
         )
 
         val expectedStats = MatchStatistics(
@@ -372,7 +379,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.calculateStatistics(MATCH.id)
+        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
 
         assertThat(actual).isEqualTo(expectedStats)
     }

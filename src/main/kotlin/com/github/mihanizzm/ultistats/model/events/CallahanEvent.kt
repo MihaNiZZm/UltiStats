@@ -3,6 +3,7 @@ package com.github.mihanizzm.ultistats.model.events
 import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
+import java.time.Instant
 import java.util.UUID
 
 data class CallahanEvent(
@@ -10,7 +11,7 @@ data class CallahanEvent(
     override val toPlayer: UUID,
     override val fromTeam: UUID,
     override val toTeam: UUID,
-    override val time: Double,
+    override val realTimestamp: Instant,
 ) : TwoPlayerEvent, StatAffectingEvent {
     override val type: EventType = EventType.CALLAHAN
 
@@ -29,7 +30,8 @@ data class CallahanEvent(
                         attack = stat.attack.copy(callahanDrops = stat.attack.callahanDrops + value)
                     )
                     toPlayer -> stat.copy(
-                        defense = stat.defense.copy(callahans = stat.defense.callahans + value)
+                        defense = stat.defense.copy(callahans = stat.defense.callahans + value),
+                        attack = stat.attack.copy(goals = stat.attack.goals + value)
                     )
                     else -> stat
                 }
@@ -43,7 +45,8 @@ data class CallahanEvent(
                         attack = stat.attack.copy(allPasses = stat.attack.allPasses + value)
                     )
                     toTeam -> stat.copy(
-                        defense = stat.defense.copy(callahans = stat.defense.callahans + value)
+                        defense = stat.defense.copy(callahans = stat.defense.callahans + value),
+                        attack = stat.attack.copy(score = stat.attack.score + value)
                     )
                     else -> stat
                 }

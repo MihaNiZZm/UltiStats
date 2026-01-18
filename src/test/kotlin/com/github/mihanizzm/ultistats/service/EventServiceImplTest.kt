@@ -7,6 +7,7 @@ import com.github.mihanizzm.ultistats.model.events.PullEvent
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.time.Instant
 import kotlin.test.assertEquals
 
 @Suppress("NonAsciiCharacters")
@@ -22,7 +23,7 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие регистрируется`() {
-        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, 7.0)
+        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, Instant.now())
 
         eventService.create(event, MATCH.id)
 
@@ -32,8 +33,8 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие изменяется`() {
-        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, 7.0)
-        val newEvent = PullEvent(TEAM_1.players[1].id!!, TEAM_1.id, 5.7)
+        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, Instant.now())
+        val newEvent = PullEvent(TEAM_1.players[1].id!!, TEAM_1.id, Instant.now())
 
         eventService.create(event, MATCH.id)
         eventService.edit(0, newEvent, MATCH.id)
@@ -44,14 +45,14 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Получаем исключение при изменении, если события с таким индексом не существует`() {
-        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, 7.0)
+        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, Instant.now())
 
         assertThrows<IllegalArgumentException> { eventService.edit(0, event, MATCH.id) }
     }
 
     @Test
     fun `Событие удаляется`() {
-        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, 7.0)
+        val event = PullEvent(TEAM_1.players[0].id!!, TEAM_1.id, Instant.now())
 
         eventService.create(event, MATCH.id)
         eventService.remove(0, MATCH.id)
@@ -67,11 +68,11 @@ class EventServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Выводится список всех событий`() {
         val events = listOf(
-            PullEvent(TEAM_2.players[0].id!!, TEAM_2.id, 3.0),
-            PassEvent(TEAM_1.players[0].id!!, TEAM_1.players[1].id!!, TEAM_1.id, TEAM_1.id, 9.0),
-            PassEvent(TEAM_1.players[1].id!!, TEAM_1.players[2].id!!, TEAM_1.id, TEAM_1.id, 11.0),
-            PassEvent(TEAM_1.players[2].id!!, TEAM_1.players[3].id!!, TEAM_1.id, TEAM_1.id, 15.0),
-            GoalEvent(TEAM_1.players[3].id!!, TEAM_1.players[4].id!!, TEAM_1.id, TEAM_1.id, 20.0),
+            PullEvent(TEAM_2.players[0].id!!, TEAM_2.id, Instant.now()),
+            PassEvent(TEAM_1.players[0].id!!, TEAM_1.players[1].id!!, TEAM_1.id, TEAM_1.id, Instant.now()),
+            PassEvent(TEAM_1.players[1].id!!, TEAM_1.players[2].id!!, TEAM_1.id, TEAM_1.id, Instant.now()),
+            PassEvent(TEAM_1.players[2].id!!, TEAM_1.players[3].id!!, TEAM_1.id, TEAM_1.id, Instant.now()),
+            GoalEvent(TEAM_1.players[3].id!!, TEAM_1.players[4].id!!, TEAM_1.id, TEAM_1.id, Instant.now()),
         )
 
         events.forEach { eventService.create(it, MATCH.id) }

@@ -6,11 +6,10 @@ import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
-import com.github.mihanizzm.ultistats.service.StatisticsService
+import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import java.time.Instant
 import java.util.UUID
 
 @SpringBootTest
@@ -139,8 +138,6 @@ abstract class MatchAbstractTest {
             UUIDS[12],
             listOf(TEAM_1, TEAM_2),
             mutableListOf<Event>(),
-            Instant.parse(START_DATE),
-            Instant.parse(END_DATE),
         )
     }
 }
