@@ -13,27 +13,33 @@ class EventServiceImpl(
     /**
      * Создать новое событие.
      */
-    override fun create(event: Event, matchId: UUID) {
+    override fun create(event: Event, matchId: UUID): UUID? {
         val match = matchService.getOrThrow(matchId)
         match.events.add(event)
+        matchService.recalculateDiskHolder(matchId)
+        return match.diskHolderId
     }
 
     /**
      * Изменить существующее событие по выбранному индексу.
      */
-    override fun edit(index: Int, event: Event, matchId: UUID) {
+    override fun edit(index: Int, event: Event, matchId: UUID): UUID? {
         val match = matchService.getOrThrow(matchId)
         checkEventExistence(index, match)
         match.events[index] = event
+        matchService.recalculateDiskHolder(matchId)
+        return match.diskHolderId
     }
 
     /**
      * Удалить выбранное событие в матче по индексу.
      */
-    override fun remove(index: Int, matchId: UUID) {
+    override fun remove(index: Int, matchId: UUID): UUID? {
         val match = matchService.getOrThrow(matchId)
         checkEventExistence(index, match)
         match.events.removeAt(index)
+        matchService.recalculateDiskHolder(matchId)
+        return match.diskHolderId
     }
 
     /**

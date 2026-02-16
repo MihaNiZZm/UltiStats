@@ -9,18 +9,21 @@ import java.util.UUID
 interface EventService {
     /**
      * Создать новое событие.
+     * @return ID игрока, который сейчас владеет диском (или null)
      */
-    fun create(event: Event, matchId: UUID)
+    fun create(event: Event, matchId: UUID): UUID?
 
     /**
      * Изменить существующее событие по выбранному индексу.
+     * @return ID игрока, который сейчас владеет диском (или null)
      */
-    fun edit(index: Int, event: Event, matchId: UUID)
+    fun edit(index: Int, event: Event, matchId: UUID): UUID?
 
     /**
      * Удалить выбранное событие в матче по индексу.
+     * @return ID игрока, который сейчас владеет диском (или null)
      */
-    fun remove(index: Int, matchId: UUID)
+    fun remove(index: Int, matchId: UUID): UUID?
 
     /**
      * Получить все события выбранного матча.

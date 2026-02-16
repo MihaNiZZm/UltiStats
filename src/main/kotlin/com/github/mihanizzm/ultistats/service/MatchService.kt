@@ -13,4 +13,9 @@ interface MatchService {
     fun delete(matchId: UUID)
 
     fun getAll(): List<Match>
+
+    /**
+     * Пересчитать владельца диска на основе списка событий матча.
+     */
+    fun recalculateDiskHolder(matchId: UUID)
 }

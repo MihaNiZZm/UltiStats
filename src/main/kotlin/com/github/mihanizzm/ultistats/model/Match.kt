@@ -7,4 +7,5 @@ data class Match(
     val id: UUID,
     val teams: List<Team>,
     val events: MutableList<Event> = mutableListOf(),
+    var diskHolderId: UUID? = null,
 )
