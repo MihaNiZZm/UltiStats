@@ -6,6 +6,7 @@ import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
+import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,6 +27,9 @@ abstract class MatchAbstractTest {
 
     @Autowired
     lateinit var eventService: EventService
+
+    @Autowired
+    lateinit var playerService: PlayerService
 
     companion object {
         const val START_DATE = "2025-11-23T12:00:00Z"
@@ -126,12 +130,12 @@ abstract class MatchAbstractTest {
         val TEAM_1 = Team(
             UUIDS[0],
             "НИИ ТУДА",
-            PLAYERS_1,
+            PLAYERS_1.map { it.id },
         )
         val TEAM_2 = Team(
             UUIDS[1],
             "НИИ СЮДА",
-            PLAYERS_2,
+            PLAYERS_2.map { it.id },
         )
 
         val MATCH = Match(
@@ -139,5 +143,23 @@ abstract class MatchAbstractTest {
             listOf(TEAM_1, TEAM_2),
             mutableListOf<Event>(),
         )
+    }
+
+    protected fun setupTestData() {
+        // Очищаем данные
+        matchService.getAll().forEach { matchService.delete(it.id) }
+        teamService.getAll().forEach { teamService.delete(it.id) }
+        playerService.getAll().forEach { playerService.delete(it.id) }
+
+        // Создаем игроков
+        PLAYERS_1.forEach { playerService.create(it) }
+        PLAYERS_2.forEach { playerService.create(it) }
+
+        // Создаем команды
+        teamService.create(TEAM_1)
+        teamService.create(TEAM_2)
+
+        // Создаем матч
+        matchService.create(MATCH)
     }
 }

@@ -5,6 +5,7 @@ import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.MatchService
+import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -33,10 +34,14 @@ class MatchControllerTest {
     @Autowired
     lateinit var teamService: TeamService
 
+    @Autowired
+    lateinit var playerService: PlayerService
+
     @BeforeEach
     fun setup() {
         matchService.getAll().forEach { matchService.delete(it.id) }
         teamService.getAll().forEach { teamService.delete(it.id) }
+        playerService.getAll().forEach { playerService.delete(it.id) }
     }
 
     @Test
@@ -118,13 +123,16 @@ class MatchControllerTest {
 
     private fun createTestTeam(name: String): Team {
         val teamId = UUID.randomUUID()
+        val players = listOf(
+            Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
+            Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
+        )
+        players.forEach { playerService.create(it) }
+
         val team = Team(
             id = teamId,
             name = name,
-            players = listOf(
-                Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
-                Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
-            )
+            playerIds = players.map { it.id }
         )
         teamService.create(team)
         return team

@@ -5,6 +5,7 @@ import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
 import com.github.mihanizzm.ultistats.service.MatchService
+import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.springframework.stereotype.Service
 import java.util.UUID
@@ -14,6 +15,7 @@ import java.util.UUID
 class StatisticsServiceImpl(
     private val matchService: MatchService,
     private val teamService: TeamService,
+    private val playerService: PlayerService,
     private val statisticsAggregatorList: List<StatisticsAggregator>,
 ) : StatisticsService {
     override fun emptyStatistics(teamIds: List<UUID>): MatchStatistics {
@@ -21,9 +23,8 @@ class StatisticsServiceImpl(
             .map { TeamStatistics(teamId = it) }
 
         val playersStats = teamService.getAllInList(teamIds)
-            .flatMap { it.players }
-            .mapNotNull { it.id }
-            .map { PlayerStatistics(playerId = it) }
+            .flatMap { team -> playerService.getAllByIds(team.playerIds) }
+            .map { PlayerStatistics(playerId = it.id) }
 
         return MatchStatistics(
             playerStatistics = playersStats,

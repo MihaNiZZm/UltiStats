@@ -23,9 +23,7 @@ import java.time.Instant
 class StatisticsServiceImplTest : MatchAbstractTest() {
     @BeforeEach
     fun setup() {
-        teamService.create(TEAM_1)
-        teamService.create(TEAM_2)
-        matchService.create(MATCH)
+        setupTestData()
         MATCH.events.clear()
     }
 
@@ -34,8 +32,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
         val teamIds = listOf(TEAM_1.id, TEAM_2.id)
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) },
+                .map { PlayerStatistics(it.id) },
             teamStatistics = listOf(TEAM_1, TEAM_2)
                 .map { TeamStatistics(it.id) },
         )
@@ -53,8 +50,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnField = 1))
@@ -86,8 +82,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(callahanDrops = 1))
@@ -125,8 +120,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnMarker = 1))
@@ -158,8 +152,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnField = 1))
@@ -191,8 +184,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(
@@ -233,8 +225,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(passes = 1))
@@ -268,8 +259,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(bricks = 1))
@@ -299,8 +289,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(pulls = 1))
@@ -330,8 +319,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(discPossessions = 1))
@@ -361,8 +349,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
 
         val expectedStats = MatchStatistics(
             playerStatistics = (PLAYERS_1 + PLAYERS_2)
-                .mapNotNull { it.id }
-                .map { PlayerStatistics(it) }
+                .map { PlayerStatistics(it.id) }
                 .map {
                     when (it.playerId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(drops = 1))

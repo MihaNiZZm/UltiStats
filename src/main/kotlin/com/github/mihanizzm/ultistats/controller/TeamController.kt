@@ -1,6 +1,5 @@
 package com.github.mihanizzm.ultistats.controller
 
-import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
@@ -47,23 +46,23 @@ class TeamController(
         if (teamFacade.delete(id)) ResponseEntity.noContent().build()
         else ResponseEntity.notFound().build()
 
-    @PostMapping("/{teamId}/players")
-    @Operation(summary = "Добавить игрока в команду")
+    @PostMapping("/{teamId}/players/{playerId}")
+    @Operation(summary = "Добавить существующего игрока в команду")
     fun addPlayer(
         @PathVariable teamId: UUID,
-        @RequestBody request: CreatePlayerRequest
+        @PathVariable playerId: UUID
     ): ResponseEntity<TeamResponse> =
-        teamFacade.addPlayer(teamId, request)
+        teamFacade.addPlayerToTeam(teamId, playerId)
             ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
             ?: ResponseEntity.notFound().build()
 
     @DeleteMapping("/{teamId}/players/{playerId}")
-    @Operation(summary = "Удалить игрока из команды")
+    @Operation(summary = "Убрать игрока из команды")
     fun removePlayer(
         @PathVariable teamId: UUID,
         @PathVariable playerId: UUID
     ): ResponseEntity<TeamResponse> =
-        teamFacade.removePlayer(teamId, playerId)
+        teamFacade.removePlayerFromTeam(teamId, playerId)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 }

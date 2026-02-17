@@ -1,5 +1,6 @@
 package com.github.mihanizzm.ultistats.dto.response
 
+import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import java.util.UUID
 
@@ -9,10 +10,10 @@ data class TeamResponse(
     val players: List<PlayerResponse>,
 ) {
     companion object {
-        fun from(team: Team) = TeamResponse(
+        fun from(team: Team, players: List<Player>) = TeamResponse(
             id = team.id,
             name = team.name,
-            players = team.players.map { PlayerResponse.from(it) },
+            players = players.map { PlayerResponse.from(it) },
         )
     }
 }
