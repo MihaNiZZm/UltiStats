@@ -1,10 +1,10 @@
 package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
+import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -30,18 +30,29 @@ class TeamControllerTest {
     @Autowired
     lateinit var teamService: TeamService
 
+    @Autowired
+    lateinit var playerService: PlayerService
+
     @BeforeEach
     fun setup() {
         teamService.getAll().forEach { teamService.delete(it.id) }
+        playerService.getAll().forEach { playerService.delete(it.id) }
     }
 
     @Test
     fun `Создание команды возвращает 201`() {
+        val player = Player(
+            id = UUID.randomUUID(),
+            teamId = null,
+            number = 10,
+            firstName = "Иван",
+            lastName = "Иванов",
+        )
+        playerService.create(player)
+
         val request = CreateTeamRequest(
             name = "Test Team",
-            players = listOf(
-                CreatePlayerRequest(number = 10, firstName = "Иван", lastName = "Иванов"),
-            )
+            playerIds = listOf(player.id),
         )
 
         mockMvc.perform(
@@ -57,7 +68,7 @@ class TeamControllerTest {
 
     @Test
     fun `Получение команды по ID возвращает 200`() {
-        val team = createTestTeam()
+        val (team, _) = createTestTeam()
 
         mockMvc.perform(get("/api/teams/${team.id}"))
             .andExpect(status().isOk)
@@ -82,7 +93,7 @@ class TeamControllerTest {
 
     @Test
     fun `Удаление команды возвращает 204`() {
-        val team = createTestTeam()
+        val (team, _) = createTestTeam()
 
         mockMvc.perform(delete("/api/teams/${team.id}"))
             .andExpect(status().isNoContent)
@@ -93,44 +104,51 @@ class TeamControllerTest {
 
     @Test
     fun `Добавление игрока в команду возвращает 201`() {
-        val team = createTestTeam()
-        val request = CreatePlayerRequest(number = 99, firstName = "Новый", lastName = "Игрок")
+        val (team, players) = createTestTeam()
 
-        mockMvc.perform(
-            post("/api/teams/${team.id}/players")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
+        val newPlayer = Player(
+            id = UUID.randomUUID(),
+            teamId = null,
+            number = 99,
+            firstName = "Новый",
+            lastName = "Игрок",
         )
+        playerService.create(newPlayer)
+
+        mockMvc.perform(post("/api/teams/${team.id}/players/${newPlayer.id}"))
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.players.length()").value(2))
+            .andExpect(jsonPath("$.players.length()").value(players.size + 1))
     }
 
     @Test
     fun `Удаление игрока из команды возвращает 200`() {
-        val team = createTestTeam()
-        val playerId = team.players.first().id
+        val (team, players) = createTestTeam()
+        val playerId = players.first().id
 
         mockMvc.perform(delete("/api/teams/${team.id}/players/$playerId"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.players.length()").value(0))
+            .andExpect(jsonPath("$.players.length()").value(players.size - 1))
     }
 
-    private fun createTestTeam(name: String = "Test Team"): Team {
+    private fun createTestTeam(name: String = "Test Team"): Pair<Team, List<Player>> {
         val teamId = UUID.randomUUID()
+        val players = listOf(
+            Player(
+                id = UUID.randomUUID(),
+                teamId = teamId,
+                number = 10,
+                firstName = "Тест",
+                lastName = "Игрок",
+            )
+        )
+        players.forEach { playerService.create(it) }
+
         val team = Team(
             id = teamId,
             name = name,
-            players = listOf(
-                Player(
-                    id = UUID.randomUUID(),
-                    teamId = teamId,
-                    number = 10,
-                    firstName = "Тест",
-                    lastName = "Игрок",
-                )
-            )
+            playerIds = players.map { it.id }
         )
         teamService.create(team)
-        return team
+        return team to players
     }
 }

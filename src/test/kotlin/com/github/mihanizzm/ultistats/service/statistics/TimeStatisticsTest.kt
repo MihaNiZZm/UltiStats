@@ -22,9 +22,6 @@ class TimeStatisticsTest : MatchAbstractTest() {
 
     @BeforeEach
     fun setup() {
-        teamService.create(TEAM_1)
-        teamService.create(TEAM_2)
-        matchService.create(MATCH)
         MATCH.events.clear()
     }
 
@@ -217,5 +214,3 @@ class TimeStatisticsTest : MatchAbstractTest() {
         assertThat(team2.totalPossessionTime).isEqualTo(Duration.ofSeconds(30)) // 30..60
     }
 }
-
-

@@ -4,8 +4,8 @@ import com.github.mihanizzm.ultistats.model.Player
 import java.util.UUID
 
 data class PlayerResponse(
-    val id: UUID?,
-    val teamId: UUID,
+    val id: UUID,
+    val teamId: UUID?,
     val number: Int?,
     val firstName: String,
     val lastName: String,

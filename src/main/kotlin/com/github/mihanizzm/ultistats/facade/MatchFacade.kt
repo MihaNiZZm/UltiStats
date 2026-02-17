@@ -3,7 +3,9 @@ package com.github.mihanizzm.ultistats.facade
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.MatchService
+import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -12,13 +14,16 @@ import java.util.UUID
 class MatchFacade(
     private val matchService: MatchService,
     private val teamService: TeamService,
+    private val playerService: PlayerService,
 ) {
     fun getAll(): List<MatchResponse> =
-        matchService.getAll().map { MatchResponse.from(it) }
+        matchService.getAll().map { match ->
+            MatchResponse.from(match, getPlayersByTeamId(match))
+        }
 
     fun getById(id: UUID): MatchResponse? {
         val match = matchService.get(id) ?: return null
-        return MatchResponse.from(match)
+        return MatchResponse.from(match, getPlayersByTeamId(match))
     }
 
     fun create(request: CreateMatchRequest): MatchResponse? {
@@ -31,7 +36,7 @@ class MatchFacade(
             teams = teams,
         )
         matchService.create(match)
-        return MatchResponse.from(match)
+        return MatchResponse.from(match, getPlayersByTeamId(match))
     }
 
     fun delete(id: UUID): Boolean {
@@ -39,4 +44,9 @@ class MatchFacade(
         matchService.delete(id)
         return true
     }
+
+    private fun getPlayersByTeamId(match: Match): Map<UUID, List<Player>> =
+        match.teams.associate { team ->
+            team.id to playerService.getAllByIds(team.playerIds)
+        }
 }

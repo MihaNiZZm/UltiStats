@@ -5,7 +5,7 @@ import java.util.UUID
 data class Team(
     val id: UUID,
     val name: String,
-    val players: List<Player>,
+    val playerIds: List<UUID>,
 ) {
-    fun hasPlayer(playerId: UUID): Boolean = players.map { it.id }.contains(playerId)
+    fun hasPlayer(playerId: UUID): Boolean = playerIds.contains(playerId)
 }

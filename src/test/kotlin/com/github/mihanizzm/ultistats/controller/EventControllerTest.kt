@@ -7,6 +7,7 @@ import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.service.MatchService
+import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -36,23 +37,33 @@ class EventControllerTest {
     @Autowired
     lateinit var teamService: TeamService
 
+    @Autowired
+    lateinit var playerService: PlayerService
+
     private lateinit var team1: Team
     private lateinit var team2: Team
+    private lateinit var players1: List<Player>
+    private lateinit var players2: List<Player>
     private lateinit var match: Match
 
     @BeforeEach
     fun setup() {
         matchService.getAll().forEach { matchService.delete(it.id) }
         teamService.getAll().forEach { teamService.delete(it.id) }
+        playerService.getAll().forEach { playerService.delete(it.id) }
 
-        team1 = createTestTeam("Команда 1")
-        team2 = createTestTeam("Команда 2")
+        val (t1, p1) = createTestTeam("Команда 1")
+        val (t2, p2) = createTestTeam("Команда 2")
+        team1 = t1
+        team2 = t2
+        players1 = p1
+        players2 = p2
         match = createTestMatch(team1, team2)
     }
 
     @Test
     fun `Создание события TURNOVER возвращает diskHolderId`() {
-        val player = team1.players.first()
+        val player = players1.first()
         val request = CreateEventRequest(
             type = EventType.TURNOVER,
             timestamp = Instant.now(),
@@ -71,8 +82,8 @@ class EventControllerTest {
 
     @Test
     fun `Создание события PASS обновляет diskHolderId`() {
-        val player1 = team1.players[0]
-        val player2 = team1.players[1]
+        val player1 = players1[0]
+        val player2 = players1[1]
 
         // Сначала подбор диска
         val turnoverRequest = CreateEventRequest(
@@ -108,11 +119,11 @@ class EventControllerTest {
 
     @Test
     fun `Создание события GOAL сбрасывает diskHolderId`() {
-        val player1 = team1.players[0]
-        val player2 = team1.players[1]
+        val player1 = players1[0]
+        val player2 = players1[1]
 
         // Подбор
-        createEvent(EventType.TURNOVER, team1.id, player1.id!!)
+        createEvent(EventType.TURNOVER, team1.id, player1.id)
 
         // Гол
         val goalRequest = CreateEventRequest(
@@ -135,8 +146,8 @@ class EventControllerTest {
 
     @Test
     fun `Получение событий матча возвращает список`() {
-        val player = team1.players.first()
-        createEvent(EventType.TURNOVER, team1.id, player.id!!)
+        val player = players1.first()
+        createEvent(EventType.TURNOVER, team1.id, player.id)
 
         mockMvc.perform(get("/api/matches/${match.id}/events"))
             .andExpect(status().isOk)
@@ -145,11 +156,11 @@ class EventControllerTest {
 
     @Test
     fun `Удаление события пересчитывает diskHolderId`() {
-        val player1 = team1.players[0]
-        val player2 = team1.players[1]
+        val player1 = players1[0]
+        val player2 = players1[1]
 
         // Подбор
-        createEvent(EventType.TURNOVER, team1.id, player1.id!!)
+        createEvent(EventType.TURNOVER, team1.id, player1.id)
 
         // Пас
         val passRequest = CreateEventRequest(
@@ -178,7 +189,7 @@ class EventControllerTest {
             type = EventType.PULL,
             timestamp = Instant.now(),
             teamId = team1.id,
-            playerId = team1.players.first().id,
+            playerId = players1.first().id,
         )
 
         mockMvc.perform(
@@ -203,18 +214,21 @@ class EventControllerTest {
         )
     }
 
-    private fun createTestTeam(name: String): Team {
+    private fun createTestTeam(name: String): Pair<Team, List<Player>> {
         val teamId = UUID.randomUUID()
+        val players = listOf(
+            Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
+            Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
+        )
+        players.forEach { playerService.create(it) }
+
         val team = Team(
             id = teamId,
             name = name,
-            players = listOf(
-                Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
-                Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
-            )
+            playerIds = players.map { it.id }
         )
         teamService.create(team)
-        return team
+        return team to players
     }
 
     private fun createTestMatch(team1: Team, team2: Team): Match {
