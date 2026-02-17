@@ -9,6 +9,7 @@ import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import com.github.mihanizzm.ultistats.service.TeamService
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import java.util.UUID
@@ -145,21 +146,18 @@ abstract class MatchAbstractTest {
         )
     }
 
-    protected fun setupTestData() {
-        // Очищаем данные
+    @BeforeEach
+    fun setupTestData() {
         matchService.getAll().forEach { matchService.delete(it.id) }
         teamService.getAll().forEach { teamService.delete(it.id) }
         playerService.getAll().forEach { playerService.delete(it.id) }
 
-        // Создаем игроков
         PLAYERS_1.forEach { playerService.create(it) }
         PLAYERS_2.forEach { playerService.create(it) }
 
-        // Создаем команды
         teamService.create(TEAM_1)
         teamService.create(TEAM_2)
 
-        // Создаем матч
         matchService.create(MATCH)
     }
 }

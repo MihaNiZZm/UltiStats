@@ -1,7 +1,6 @@
 package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
@@ -42,11 +41,18 @@ class TeamControllerTest {
 
     @Test
     fun `Создание команды возвращает 201`() {
+        val player = Player(
+            id = UUID.randomUUID(),
+            teamId = null,
+            number = 10,
+            firstName = "Иван",
+            lastName = "Иванов",
+        )
+        playerService.create(player)
+
         val request = CreateTeamRequest(
             name = "Test Team",
-            players = listOf(
-                CreatePlayerRequest(number = 10, firstName = "Иван", lastName = "Иванов"),
-            )
+            playerIds = listOf(player.id),
         )
 
         mockMvc.perform(
@@ -100,7 +106,6 @@ class TeamControllerTest {
     fun `Добавление игрока в команду возвращает 201`() {
         val (team, players) = createTestTeam()
 
-        // Создаем нового игрока без команды
         val newPlayer = Player(
             id = UUID.randomUUID(),
             teamId = null,

@@ -40,3 +40,6 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Claude Code ###
+CLAUDE.md

@@ -3,6 +3,7 @@ package com.github.mihanizzm.ultistats.facade
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
@@ -44,7 +45,7 @@ class MatchFacade(
         return true
     }
 
-    private fun getPlayersByTeamId(match: Match): Map<UUID, List<com.github.mihanizzm.ultistats.model.Player>> =
+    private fun getPlayersByTeamId(match: Match): Map<UUID, List<Player>> =
         match.teams.associate { team ->
             team.id to playerService.getAllByIds(team.playerIds)
         }

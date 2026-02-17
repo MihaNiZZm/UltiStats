@@ -15,7 +15,6 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @BeforeEach
     fun setup() {
-        setupTestData()
         MATCH.events.clear()
     }
 

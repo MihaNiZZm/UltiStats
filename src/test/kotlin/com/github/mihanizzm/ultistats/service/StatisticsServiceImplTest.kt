@@ -23,7 +23,6 @@ import java.time.Instant
 class StatisticsServiceImplTest : MatchAbstractTest() {
     @BeforeEach
     fun setup() {
-        setupTestData()
         MATCH.events.clear()
     }
 

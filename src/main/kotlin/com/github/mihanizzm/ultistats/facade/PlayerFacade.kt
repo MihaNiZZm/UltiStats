@@ -32,7 +32,6 @@ class PlayerFacade(
         )
         playerService.create(player)
 
-        // Если указан teamId, добавляем игрока в команду
         request.teamId?.let { teamId ->
             teamService.get(teamId)?.let { team ->
                 val updatedTeam = team.copy(playerIds = team.playerIds + playerId)
@@ -57,9 +56,7 @@ class PlayerFacade(
         )
         playerService.update(updatedPlayer)
 
-        // Обновляем принадлежность к команде если teamId изменился
         if (oldTeamId != newTeamId) {
-            // Удаляем из старой команды
             oldTeamId?.let { oldId ->
                 teamService.get(oldId)?.let { oldTeam ->
                     val updated = oldTeam.copy(playerIds = oldTeam.playerIds - id)
@@ -67,7 +64,6 @@ class PlayerFacade(
                     teamService.create(updated)
                 }
             }
-            // Добавляем в новую команду
             newTeamId?.let { newId ->
                 teamService.get(newId)?.let { newTeam ->
                     val updated = newTeam.copy(playerIds = newTeam.playerIds + id)
@@ -83,7 +79,6 @@ class PlayerFacade(
     fun delete(id: UUID): Boolean {
         val player = playerService.get(id) ?: return false
 
-        // Удаляем из команды если игрок был в команде
         player.teamId?.let { teamId ->
             teamService.get(teamId)?.let { team ->
                 val updatedTeam = team.copy(playerIds = team.playerIds - id)

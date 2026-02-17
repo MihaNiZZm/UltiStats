@@ -22,7 +22,6 @@ class TimeStatisticsTest : MatchAbstractTest() {
 
     @BeforeEach
     fun setup() {
-        setupTestData()
         MATCH.events.clear()
     }
 
