@@ -24,17 +24,24 @@ class TeamController(
     @Operation(summary = "Получить команды с пагинацией, фильтрацией и сортировкой")
     fun getAll(
         @Parameter(description = "Номер страницы (начиная с 0)")
-        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "0")
+        page: Int,
+
         @Parameter(description = "Размер страницы")
-        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "20")
+        size: Int,
+
         @Parameter(description = "Фильтр по названию (частичное совпадение)")
-        @RequestParam(required = false) name: String?,
+        @RequestParam(required = false)
+        name: String?,
+
         @Parameter(
             description = "Сортировка. Формат: field:direction. " +
                 "Доступные поля: name. По умолчанию: name:asc",
             example = "name:asc"
         )
-        @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false)
+        sort: String?,
     ): PageResponse<TeamResponse> {
         val filter = TeamFilterRequest(name = name)
         val sortParam = sort?.let { SortParam.parse(it) } ?: TeamFacade.DEFAULT_SORT

@@ -24,20 +24,29 @@ class PlayerController(
     @Operation(summary = "Получить игроков с пагинацией, фильтрацией и сортировкой")
     fun getAll(
         @Parameter(description = "Номер страницы (начиная с 0)")
-        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "0")
+        page: Int,
+
         @Parameter(description = "Размер страницы")
-        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "20")
+        size: Int,
+
         @Parameter(description = "Фильтр по имени (частичное совпадение)")
-        @RequestParam(required = false) name: String?,
+        @RequestParam(required = false)
+        name: String?,
+
         @Parameter(description = "Фильтр по ID команды")
-        @RequestParam(required = false) teamId: UUID?,
+        @RequestParam(required = false)
+        teamId: UUID?,
+
         @Parameter(
             description = "Сортировка. Формат: field:direction. " +
                 "Доступные поля: lastName, firstName, number, teamId. " +
                 "По умолчанию: lastName:asc",
             example = "lastName:asc"
         )
-        @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false)
+        sort: String?,
     ): PageResponse<PlayerResponse> {
         val filter = PlayerFilterRequest(name = name, teamId = teamId)
         val sortParam = sort?.let { SortParam.parse(it) } ?: PlayerFacade.DEFAULT_SORT
