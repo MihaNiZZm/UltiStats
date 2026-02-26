@@ -1,0 +1,31 @@
+# Build outputs
+build/
+.gradle/
+out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Local configs
+*.local
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated files
+openapi.json
+openapi.yaml
