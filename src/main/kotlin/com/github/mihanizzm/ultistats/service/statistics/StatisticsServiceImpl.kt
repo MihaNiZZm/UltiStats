@@ -1,6 +1,5 @@
 package com.github.mihanizzm.ultistats.service.statistics
 
-import com.github.mihanizzm.ultistats.model.events.StatAffectingEvent
 import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
@@ -35,13 +34,10 @@ class StatisticsServiceImpl(
     override fun recalculateMatchStatistics(matchId: UUID): MatchStatistics {
         val match = matchService.getOrThrow(matchId)
         val teamIds = match.teams.map { it.id }
+        val initialStatistics = emptyStatistics(teamIds)
 
-        val gameStatistics = match.events.fold(emptyStatistics(teamIds)) { stat, event ->
-            if (event is StatAffectingEvent) event.apply(stat) else stat
-        }
-
-        return statisticsAggregatorList.fold(gameStatistics) { stat, statsAggregator ->
-            statsAggregator.aggregate(stat, match.events)
+        return statisticsAggregatorList.fold(initialStatistics) { stats, aggregator ->
+            aggregator.aggregate(stats, match.events)
         }
     }
 }

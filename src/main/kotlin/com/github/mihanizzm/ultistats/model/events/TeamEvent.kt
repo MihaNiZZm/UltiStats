@@ -1,7 +1,20 @@
 package com.github.mihanizzm.ultistats.model.events
 
+import java.time.Instant
 import java.util.UUID
 
-sealed interface TeamEvent : Event {
-    val team: UUID
+/**
+ * Событие команды.
+ * Используется для: TIMEOUT_START, TIMEOUT_END.
+ */
+data class TeamEvent(
+    val team: UUID,
+    override val realTimestamp: Instant,
+    override val type: EventType,
+) : Event {
+    init {
+        require(type.category == EventCategory.TEAM) {
+            "EventType $type не является TEAM событием"
+        }
+    }
 }

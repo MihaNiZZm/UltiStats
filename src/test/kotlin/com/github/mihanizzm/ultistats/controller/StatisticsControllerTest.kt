@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
-import com.github.mihanizzm.ultistats.model.events.PassEvent
-import com.github.mihanizzm.ultistats.model.events.TurnoverEvent
+import com.github.mihanizzm.ultistats.model.events.EventType
+import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -85,11 +86,11 @@ class StatisticsControllerTest {
 
         // Добавляем события: подбор и пас
         eventService.create(
-            TurnoverEvent(player1.id, team1.id, Instant.now()),
+            OnePlayerEvent(player1.id, team1.id, Instant.now(), EventType.TURNOVER),
             match.id
         )
         eventService.create(
-            PassEvent(player1.id, player2.id, team1.id, team1.id, Instant.now()),
+            TwoPlayerEvent(player1.id, player2.id, team1.id, team1.id, Instant.now(), EventType.PASS),
             match.id
         )
 

@@ -53,28 +53,28 @@ class MatchServiceImpl(
         var diskHolder: UUID? = null
 
         for (event in events) {
-            diskHolder = when (event) {
+            diskHolder = when (event.type) {
                 // Диск переходит к получателю
-                is PassEvent -> event.toPlayer
-                is InterceptionEvent -> event.toPlayer
+                EventType.PASS,
+                EventType.INTERCEPTION -> (event as TwoPlayerEvent).toPlayer
 
                 // Диск переходит к игроку, который подобрал
-                is TurnoverEvent -> event.player
+                EventType.TURNOVER -> (event as OnePlayerEvent).player
 
                 // Диск никому не принадлежит (на земле или поинт завершён)
-                is DropEvent,
-                is BlockMarkerEvent,
-                is BlockFieldEvent,
-                is GoalEvent,
-                is CallahanEvent -> null
+                EventType.DROP,
+                EventType.BLOCK_MARKER,
+                EventType.BLOCK_FIELD,
+                EventType.GOAL,
+                EventType.CALLAHAN -> null
 
                 // Системные события не влияют на владельца диска
-                is PullEvent,
-                is BrickEvent,
-                is TimeoutStartEvent,
-                is TimeoutEndEvent,
-                is HalftimeStartEvent,
-                is HalftimeEndEvent -> diskHolder
+                EventType.PULL,
+                EventType.BRICK,
+                EventType.TIMEOUT_START,
+                EventType.TIMEOUT_END,
+                EventType.HALFTIME_START,
+                EventType.HALFTIME_END -> diskHolder
             }
         }
 
