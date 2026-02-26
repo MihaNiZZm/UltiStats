@@ -1,9 +1,9 @@
 package com.github.mihanizzm.ultistats.service
 
 import com.github.mihanizzm.ultistats.MatchAbstractTest
-import com.github.mihanizzm.ultistats.model.events.GoalEvent
-import com.github.mihanizzm.ultistats.model.events.PassEvent
-import com.github.mihanizzm.ultistats.model.events.PullEvent
+import com.github.mihanizzm.ultistats.model.events.EventType
+import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -20,7 +20,7 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие регистрируется`() {
-        val event = PullEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now())
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
 
         eventService.create(event, MATCH.id)
 
@@ -30,8 +30,8 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие изменяется`() {
-        val event = PullEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now())
-        val newEvent = PullEvent(PLAYERS_1[1].id, TEAM_1.id, Instant.now())
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
+        val newEvent = OnePlayerEvent(PLAYERS_1[1].id, TEAM_1.id, Instant.now(), EventType.PULL)
 
         eventService.create(event, MATCH.id)
         eventService.edit(0, newEvent, MATCH.id)
@@ -42,14 +42,14 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Получаем исключение при изменении, если события с таким индексом не существует`() {
-        val event = PullEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now())
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
 
         assertThrows<IllegalArgumentException> { eventService.edit(0, event, MATCH.id) }
     }
 
     @Test
     fun `Событие удаляется`() {
-        val event = PullEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now())
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
 
         eventService.create(event, MATCH.id)
         eventService.remove(0, MATCH.id)
@@ -65,11 +65,11 @@ class EventServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Выводится список всех событий`() {
         val events = listOf(
-            PullEvent(PLAYERS_2[0].id, TEAM_2.id, Instant.now()),
-            PassEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, TEAM_1.id, TEAM_1.id, Instant.now()),
-            PassEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, TEAM_1.id, TEAM_1.id, Instant.now()),
-            PassEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, TEAM_1.id, TEAM_1.id, Instant.now()),
-            GoalEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, TEAM_1.id, TEAM_1.id, Instant.now()),
+            OnePlayerEvent(PLAYERS_2[0].id, TEAM_2.id, Instant.now(), EventType.PULL),
+            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.GOAL),
         )
 
         events.forEach { eventService.create(it, MATCH.id) }

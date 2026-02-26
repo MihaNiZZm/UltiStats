@@ -1,125 +1,49 @@
 package com.github.mihanizzm.ultistats.factory
 
 import com.github.mihanizzm.ultistats.dto.request.CreateEventRequest
-import com.github.mihanizzm.ultistats.model.events.*
+import com.github.mihanizzm.ultistats.model.events.Event
+import com.github.mihanizzm.ultistats.model.events.EventCategory
+import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.SystemEvent
+import com.github.mihanizzm.ultistats.model.events.TeamEvent
+import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import org.springframework.stereotype.Component
 
 @Component
 class EventFactory {
     fun createFromRequest(request: CreateEventRequest): Event? {
-        return when (request.type) {
-            EventType.PASS -> {
-                if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
-                PassEvent(
-                    fromPlayer = request.playerId,
-                    toPlayer = request.toPlayerId,
-                    fromTeam = request.teamId,
-                    toTeam = request.toTeamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.GOAL -> {
-                if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
-                GoalEvent(
-                    fromPlayer = request.playerId,
-                    toPlayer = request.toPlayerId,
-                    fromTeam = request.teamId,
-                    toTeam = request.toTeamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.DROP -> {
+        return when (request.type.category) {
+            EventCategory.ONE_PLAYER -> {
                 if (request.playerId == null) return null
-                DropEvent(
+                OnePlayerEvent(
                     player = request.playerId,
                     team = request.teamId,
                     realTimestamp = request.timestamp,
+                    type = request.type,
                 )
             }
-            EventType.PULL -> {
-                if (request.playerId == null) return null
-                PullEvent(
-                    player = request.playerId,
-                    team = request.teamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.BRICK -> {
-                if (request.playerId == null) return null
-                BrickEvent(
-                    player = request.playerId,
-                    team = request.teamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.TURNOVER -> {
-                if (request.playerId == null) return null
-                TurnoverEvent(
-                    player = request.playerId,
-                    team = request.teamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.BLOCK_MARKER -> {
+            EventCategory.TWO_PLAYER -> {
                 if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
-                BlockMarkerEvent(
+                TwoPlayerEvent(
                     fromPlayer = request.playerId,
                     toPlayer = request.toPlayerId,
                     fromTeam = request.teamId,
                     toTeam = request.toTeamId,
                     realTimestamp = request.timestamp,
+                    type = request.type,
                 )
             }
-            EventType.BLOCK_FIELD -> {
-                if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
-                BlockFieldEvent(
-                    fromPlayer = request.playerId,
-                    toPlayer = request.toPlayerId,
-                    fromTeam = request.teamId,
-                    toTeam = request.toTeamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.INTERCEPTION -> {
-                if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
-                InterceptionEvent(
-                    fromPlayer = request.playerId,
-                    toPlayer = request.toPlayerId,
-                    fromTeam = request.teamId,
-                    toTeam = request.toTeamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.CALLAHAN -> {
-                if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
-                CallahanEvent(
-                    fromPlayer = request.playerId,
-                    toPlayer = request.toPlayerId,
-                    fromTeam = request.teamId,
-                    toTeam = request.toTeamId,
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.TIMEOUT_START -> {
-                TimeoutStartEvent(
+            EventCategory.TEAM -> {
+                TeamEvent(
                     team = request.teamId,
                     realTimestamp = request.timestamp,
+                    type = request.type,
                 )
             }
-            EventType.TIMEOUT_END -> {
-                TimeoutEndEvent(
-                    team = request.teamId,
+            EventCategory.SYSTEM -> {
+                SystemEvent(
                     realTimestamp = request.timestamp,
-                )
-            }
-            EventType.HALFTIME_START -> {
-                HalftimeStartEvent(
-                    realTimestamp = request.timestamp,
-                )
-            }
-            EventType.HALFTIME_END -> {
-                HalftimeEndEvent(
-                    realTimestamp = request.timestamp,
+                    type = request.type,
                 )
             }
         }
