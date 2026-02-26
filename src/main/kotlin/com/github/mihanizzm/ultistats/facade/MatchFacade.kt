@@ -1,6 +1,7 @@
 package com.github.mihanizzm.ultistats.facade
 
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
+import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
@@ -34,6 +35,7 @@ class MatchFacade(
         val match = Match(
             id = UUID.randomUUID(),
             teams = teams,
+            plannedStartTimestamp = request.plannedStartTimestamp,
         )
         matchService.create(match)
         return MatchResponse.from(match, getPlayersByTeamId(match))
@@ -43,6 +45,22 @@ class MatchFacade(
         if (matchService.get(id) == null) return false
         matchService.delete(id)
         return true
+    }
+
+    fun startMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
+        val match = matchService.get(id) ?: return null
+        if (!matchService.startMatch(id, request.timestamp)) {
+            return null
+        }
+        return MatchResponse.from(match, getPlayersByTeamId(match))
+    }
+
+    fun endMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
+        val match = matchService.get(id) ?: return null
+        if (!matchService.endMatch(id, request.timestamp)) {
+            return null
+        }
+        return MatchResponse.from(match, getPlayersByTeamId(match))
     }
 
     private fun getPlayersByTeamId(match: Match): Map<UUID, List<Player>> =

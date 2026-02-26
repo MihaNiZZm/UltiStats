@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/players")
+@RequestMapping("/api/v1/players")
 @Tag(name = "Players", description = "Управление игроками")
 class PlayerController(
     private val playerFacade: PlayerFacade,

@@ -1,6 +1,7 @@
 package com.github.mihanizzm.ultistats.controller
 
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
+import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.facade.MatchFacade
 import io.swagger.v3.oas.annotations.Operation
@@ -11,7 +12,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/matches")
+@RequestMapping("/api/v1/matches")
 @Tag(name = "Matches", description = "Управление матчами")
 class MatchController(
     private val matchFacade: MatchFacade,
@@ -40,4 +41,24 @@ class MatchController(
     fun delete(@PathVariable id: UUID): ResponseEntity<Unit> =
         if (matchFacade.delete(id)) ResponseEntity.noContent().build()
         else ResponseEntity.notFound().build()
+
+    @PostMapping("/{id}/start")
+    @Operation(summary = "Начать матч")
+    fun startMatch(
+        @PathVariable id: UUID,
+        @RequestBody request: MatchTimestampRequest,
+    ): ResponseEntity<MatchResponse> =
+        matchFacade.startMatch(id, request)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.badRequest().build()
+
+    @PostMapping("/{id}/end")
+    @Operation(summary = "Завершить матч")
+    fun endMatch(
+        @PathVariable id: UUID,
+        @RequestBody request: MatchTimestampRequest,
+    ): ResponseEntity<MatchResponse> =
+        matchFacade.endMatch(id, request)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.badRequest().build()
 }

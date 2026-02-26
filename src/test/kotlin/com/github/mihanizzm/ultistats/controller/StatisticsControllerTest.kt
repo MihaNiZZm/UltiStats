@@ -66,7 +66,7 @@ class StatisticsControllerTest {
 
     @Test
     fun `Получение статистики пустого матча возвращает 200`() {
-        mockMvc.perform(get("/api/matches/${match.id}/statistics"))
+        mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.playerStatistics").isArray)
             .andExpect(jsonPath("$.teamStatistics").isArray)
@@ -74,7 +74,7 @@ class StatisticsControllerTest {
 
     @Test
     fun `Получение статистики несуществующего матча возвращает 404`() {
-        mockMvc.perform(get("/api/matches/${UUID.randomUUID()}/statistics"))
+        mockMvc.perform(get("/api/v1/matches/${UUID.randomUUID()}/statistics"))
             .andExpect(status().isNotFound)
     }
 
@@ -93,7 +93,7 @@ class StatisticsControllerTest {
             match.id
         )
 
-        mockMvc.perform(get("/api/matches/${match.id}/statistics"))
+        mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.teamStatistics[?(@.teamId=='${team1.id}')].attack.allPasses").value(1))
             .andExpect(jsonPath("$.teamStatistics[?(@.teamId=='${team1.id}')].attack.completePasses").value(1))

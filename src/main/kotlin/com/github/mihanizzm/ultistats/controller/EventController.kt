@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/matches/{matchId}/events")
+@RequestMapping("/api/v1/matches/{matchId}/events")
 @Tag(name = "Events", description = "Управление событиями матча")
 class EventController(
     private val eventFacade: EventFacade,

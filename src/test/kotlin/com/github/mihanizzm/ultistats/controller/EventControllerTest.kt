@@ -72,7 +72,7 @@ class EventControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/matches/${match.id}/events")
+            post("/api/v1/matches/${match.id}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
@@ -93,7 +93,7 @@ class EventControllerTest {
             playerId = player1.id,
         )
         mockMvc.perform(
-            post("/api/matches/${match.id}/events")
+            post("/api/v1/matches/${match.id}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(turnoverRequest))
         )
@@ -109,7 +109,7 @@ class EventControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/matches/${match.id}/events")
+            post("/api/v1/matches/${match.id}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(passRequest))
         )
@@ -136,7 +136,7 @@ class EventControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/matches/${match.id}/events")
+            post("/api/v1/matches/${match.id}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(goalRequest))
         )
@@ -149,7 +149,7 @@ class EventControllerTest {
         val player = players1.first()
         createEvent(EventType.TURNOVER, team1.id, player.id)
 
-        mockMvc.perform(get("/api/matches/${match.id}/events"))
+        mockMvc.perform(get("/api/v1/matches/${match.id}/events"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
     }
@@ -172,13 +172,13 @@ class EventControllerTest {
             toPlayerId = player2.id,
         )
         mockMvc.perform(
-            post("/api/matches/${match.id}/events")
+            post("/api/v1/matches/${match.id}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(passRequest))
         )
 
         // Удаляем пас (индекс 1)
-        mockMvc.perform(delete("/api/matches/${match.id}/events/1"))
+        mockMvc.perform(delete("/api/v1/matches/${match.id}/events/1"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.diskHolderId").value(player1.id.toString()))
     }
@@ -193,7 +193,7 @@ class EventControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/matches/${UUID.randomUUID()}/events")
+            post("/api/v1/matches/${UUID.randomUUID()}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
@@ -208,7 +208,7 @@ class EventControllerTest {
             playerId = playerId,
         )
         mockMvc.perform(
-            post("/api/matches/${match.id}/events")
+            post("/api/v1/matches/${match.id}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )

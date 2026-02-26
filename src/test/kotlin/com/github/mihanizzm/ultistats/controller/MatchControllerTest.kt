@@ -51,7 +51,7 @@ class MatchControllerTest {
         val request = CreateMatchRequest(teamIds = listOf(team1.id, team2.id))
 
         mockMvc.perform(
-            post("/api/matches")
+            post("/api/v1/matches")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
@@ -68,7 +68,7 @@ class MatchControllerTest {
         val request = CreateMatchRequest(teamIds = listOf(team1.id, UUID.randomUUID()))
 
         mockMvc.perform(
-            post("/api/matches")
+            post("/api/v1/matches")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
@@ -82,21 +82,21 @@ class MatchControllerTest {
         val request = CreateMatchRequest(teamIds = listOf(team1.id, team2.id))
 
         val result = mockMvc.perform(
-            post("/api/matches")
+            post("/api/v1/matches")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         ).andReturn()
 
         val matchId = objectMapper.readTree(result.response.contentAsString).get("id").asText()
 
-        mockMvc.perform(get("/api/matches/$matchId"))
+        mockMvc.perform(get("/api/v1/matches/$matchId"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(matchId))
     }
 
     @Test
     fun `Получение несуществующего матча возвращает 404`() {
-        mockMvc.perform(get("/api/matches/${UUID.randomUUID()}"))
+        mockMvc.perform(get("/api/v1/matches/${UUID.randomUUID()}"))
             .andExpect(status().isNotFound)
     }
 
@@ -107,17 +107,17 @@ class MatchControllerTest {
         val request = CreateMatchRequest(teamIds = listOf(team1.id, team2.id))
 
         val result = mockMvc.perform(
-            post("/api/matches")
+            post("/api/v1/matches")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         ).andReturn()
 
         val matchId = objectMapper.readTree(result.response.contentAsString).get("id").asText()
 
-        mockMvc.perform(delete("/api/matches/$matchId"))
+        mockMvc.perform(delete("/api/v1/matches/$matchId"))
             .andExpect(status().isNoContent)
 
-        mockMvc.perform(get("/api/matches/$matchId"))
+        mockMvc.perform(get("/api/v1/matches/$matchId"))
             .andExpect(status().isNotFound)
     }
 

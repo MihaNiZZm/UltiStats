@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/teams")
+@RequestMapping("/api/v1/teams")
 @Tag(name = "Teams", description = "Управление командами")
 class TeamController(
     private val teamFacade: TeamFacade,
