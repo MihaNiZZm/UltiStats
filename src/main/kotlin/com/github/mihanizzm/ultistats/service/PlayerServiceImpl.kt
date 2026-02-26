@@ -1,5 +1,6 @@
 package com.github.mihanizzm.ultistats.service
 
+import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.model.Player
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -24,4 +25,12 @@ class PlayerServiceImpl(
     override fun getAllByIds(ids: List<UUID>): List<Player> = playerRepository.getAllByIds(ids)
 
     override fun getAllByTeamId(teamId: UUID): List<Player> = playerRepository.getAllByTeamId(teamId)
+
+    override fun findAllFiltered(filter: PlayerFilterRequest): List<Player> =
+        playerRepository.findAllFiltered(filter)
+
+    override fun count(): Long = playerRepository.count()
+
+    override fun countFiltered(filter: PlayerFilterRequest): Long =
+        playerRepository.countFiltered(filter)
 }

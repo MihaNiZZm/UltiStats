@@ -82,13 +82,54 @@ class TeamControllerTest {
     }
 
     @Test
-    fun `Получение всех команд возвращает список`() {
+    fun `Получение всех команд с пагинацией возвращает PageResponse`() {
         createTestTeam("Team 1")
         createTestTeam("Team 2")
 
         mockMvc.perform(get("/api/v1/teams"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.currentPage").value(0))
+    }
+
+    @Test
+    fun `Фильтрация команд по имени работает`() {
+        createTestTeam("Alpha Team")
+        createTestTeam("Beta Team")
+        createTestTeam("Gamma")
+
+        mockMvc.perform(get("/api/v1/teams").param("name", "Team"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.totalElements").value(2))
+    }
+
+    @Test
+    fun `Пагинация команд работает`() {
+        for (i in 1..5) {
+            createTestTeam("Team $i")
+        }
+
+        mockMvc.perform(
+            get("/api/v1/teams")
+                .param("page", "0")
+                .param("size", "2")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.totalElements").value(5))
+            .andExpect(jsonPath("$.totalPages").value(3))
+            .andExpect(jsonPath("$.currentPage").value(0))
+
+        mockMvc.perform(
+            get("/api/v1/teams")
+                .param("page", "2")
+                .param("size", "2")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.currentPage").value(2))
     }
 
     @Test
@@ -128,6 +169,35 @@ class TeamControllerTest {
         mockMvc.perform(delete("/api/v1/teams/${team.id}/players/$playerId"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.players.length()").value(players.size - 1))
+    }
+
+    @Test
+    fun `Сортировка команд по имени работает`() {
+        createTestTeam("Gamma Team")
+        createTestTeam("Alpha Team")
+        createTestTeam("Beta Team")
+
+        mockMvc.perform(get("/api/v1/teams"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].name").value("Alpha Team"))
+            .andExpect(jsonPath("$.content[1].name").value("Beta Team"))
+            .andExpect(jsonPath("$.content[2].name").value("Gamma Team"))
+    }
+
+    @Test
+    fun `Сортировка команд по убыванию работает`() {
+        createTestTeam("Alpha")
+        createTestTeam("Beta")
+        createTestTeam("Gamma")
+
+        mockMvc.perform(
+            get("/api/v1/teams")
+                .param("sort", "name:desc")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].name").value("Gamma"))
+            .andExpect(jsonPath("$.content[1].name").value("Beta"))
+            .andExpect(jsonPath("$.content[2].name").value("Alpha"))
     }
 
     private fun createTestTeam(name: String = "Test Team"): Pair<Team, List<Player>> {

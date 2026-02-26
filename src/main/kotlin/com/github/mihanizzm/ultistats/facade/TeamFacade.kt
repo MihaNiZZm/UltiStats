@@ -1,10 +1,14 @@
 package com.github.mihanizzm.ultistats.facade
 
+import com.github.mihanizzm.ultistats.dto.common.PageResponse
+import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
+import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import java.util.UUID
 
@@ -13,11 +17,41 @@ class TeamFacade(
     private val teamService: TeamService,
     private val playerService: PlayerService,
 ) {
+    companion object {
+        val DEFAULT_SORT = SortParam("name")
+
+        val SORT_FIELD_EXTRACTORS: Map<String, (Team) -> Comparable<*>?> = mapOf(
+            "name" to { it.name },
+        )
+    }
+
     fun getAll(): List<TeamResponse> =
         teamService.getAll().map { team ->
             val players = playerService.getAllByIds(team.playerIds)
             TeamResponse.from(team, players)
         }
+
+    fun getAllPaged(
+        page: Int,
+        size: Int,
+        filter: TeamFilterRequest,
+        sortParam: SortParam = DEFAULT_SORT,
+    ): PageResponse<TeamResponse> {
+        val filteredTeams = teamService.findAllFiltered(filter)
+        val totalElements = filteredTeams.size.toLong()
+
+        val sortedTeams = filteredTeams.applySorting(sortParam, SORT_FIELD_EXTRACTORS)
+
+        val content = sortedTeams
+            .drop(page * size)
+            .take(size)
+            .map { team ->
+                val players = playerService.getAllByIds(team.playerIds)
+                TeamResponse.from(team, players)
+            }
+
+        return PageResponse.of(content, totalElements, page, size)
+    }
 
     fun getById(id: UUID): TeamResponse? {
         val team = teamService.get(id) ?: return null

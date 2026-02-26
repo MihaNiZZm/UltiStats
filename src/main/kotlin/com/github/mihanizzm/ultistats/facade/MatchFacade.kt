@@ -1,6 +1,9 @@
 package com.github.mihanizzm.ultistats.facade
 
+import com.github.mihanizzm.ultistats.dto.common.PageResponse
+import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
+import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
@@ -8,6 +11,7 @@ import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import java.util.UUID
 
@@ -17,10 +21,42 @@ class MatchFacade(
     private val teamService: TeamService,
     private val playerService: PlayerService,
 ) {
+    companion object {
+        val DEFAULT_SORT = SortParam("plannedStartTimestamp")
+
+        val SORT_FIELD_EXTRACTORS: Map<String, (Match) -> Comparable<*>?> = mapOf(
+            "plannedStartTimestamp" to { it.plannedStartTimestamp },
+            "startedAt" to { it.startedAt },
+            "endedAt" to { it.endedAt },
+            "status" to { it.status.name },
+        )
+    }
+
     fun getAll(): List<MatchResponse> =
         matchService.getAll().map { match ->
             MatchResponse.from(match, getPlayersByTeamId(match))
         }
+
+    fun getAllPaged(
+        page: Int,
+        size: Int,
+        filter: MatchFilterRequest,
+        sortParam: SortParam = DEFAULT_SORT,
+    ): PageResponse<MatchResponse> {
+        val filteredMatches = matchService.findAllFiltered(filter)
+        val totalElements = filteredMatches.size.toLong()
+
+        val sortedMatches = filteredMatches.applySorting(sortParam, SORT_FIELD_EXTRACTORS)
+
+        val content = sortedMatches
+            .drop(page * size)
+            .take(size)
+            .map { match ->
+                MatchResponse.from(match, getPlayersByTeamId(match))
+            }
+
+        return PageResponse.of(content, totalElements, page, size)
+    }
 
     fun getById(id: UUID): MatchResponse? {
         val match = matchService.get(id) ?: return null
