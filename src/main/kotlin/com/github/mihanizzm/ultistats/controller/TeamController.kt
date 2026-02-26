@@ -41,11 +41,10 @@ class TeamController(
             example = "name:asc"
         )
         @RequestParam(required = false)
-        sort: String?,
+        sort: SortParam?,
     ): PageResponse<TeamResponse> {
         val filter = TeamFilterRequest(name = name)
-        val sortParam = sort?.let { SortParam.parse(it) } ?: TeamFacade.DEFAULT_SORT
-        return teamFacade.getAllPaged(page, size, filter, sortParam)
+        return teamFacade.getAllPaged(page, size, filter, sort ?: TeamFacade.DEFAULT_SORT)
     }
 
     @GetMapping("/{id}")

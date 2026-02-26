@@ -46,11 +46,10 @@ class PlayerController(
             example = "lastName:asc"
         )
         @RequestParam(required = false)
-        sort: String?,
+        sort: SortParam?,
     ): PageResponse<PlayerResponse> {
         val filter = PlayerFilterRequest(name = name, teamId = teamId)
-        val sortParam = sort?.let { SortParam.parse(it) } ?: PlayerFacade.DEFAULT_SORT
-        return playerFacade.getAllPaged(page, size, filter, sortParam)
+        return playerFacade.getAllPaged(page, size, filter, sort ?: PlayerFacade.DEFAULT_SORT)
     }
 
     @GetMapping("/{id}")

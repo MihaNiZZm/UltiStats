@@ -57,7 +57,7 @@ class MatchController(
             example = "plannedStartTimestamp:asc"
         )
         @RequestParam(required = false)
-        sort: String?,
+        sort: SortParam?,
     ): PageResponse<MatchResponse> {
         val filter = MatchFilterRequest(
             teamId = teamId,
@@ -65,8 +65,7 @@ class MatchController(
             dateFrom = dateFrom,
             dateTo = dateTo,
         )
-        val sortParam = sort?.let { SortParam.parse(it) } ?: MatchFacade.DEFAULT_SORT
-        return matchFacade.getAllPaged(page, size, filter, sortParam)
+        return matchFacade.getAllPaged(page, size, filter, sort ?: MatchFacade.DEFAULT_SORT)
     }
 
     @GetMapping("/{id}")
