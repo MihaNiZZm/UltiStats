@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/matches/{matchId}/statistics")
+@RequestMapping("/api/v1/matches/{matchId}/statistics")
 @Tag(name = "Statistics", description = "Получение статистики матча")
 class StatisticsController(
     private val statisticsService: StatisticsService,

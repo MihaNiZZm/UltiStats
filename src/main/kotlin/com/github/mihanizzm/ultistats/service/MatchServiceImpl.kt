@@ -5,6 +5,7 @@ import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.events.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.time.Instant
 import java.util.UUID
 
 @Service
@@ -28,6 +29,24 @@ class MatchServiceImpl(
     override fun recalculateDiskHolder(matchId: UUID) {
         val match = getOrThrow(matchId)
         match.diskHolderId = calculateDiskHolder(match.events)
+    }
+
+    override fun startMatch(matchId: UUID, timestamp: Instant): Boolean {
+        val match = getOrThrow(matchId)
+        if (match.startedAt != null) {
+            return false
+        }
+        match.startedAt = timestamp
+        return true
+    }
+
+    override fun endMatch(matchId: UUID, timestamp: Instant): Boolean {
+        val match = getOrThrow(matchId)
+        if (match.startedAt == null || match.endedAt != null) {
+            return false
+        }
+        match.endedAt = timestamp
+        return true
     }
 
     private fun calculateDiskHolder(events: List<Event>): UUID? {

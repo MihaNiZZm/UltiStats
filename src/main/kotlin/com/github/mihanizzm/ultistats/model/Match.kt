@@ -1,6 +1,7 @@
 package com.github.mihanizzm.ultistats.model
 
 import com.github.mihanizzm.ultistats.model.events.Event
+import java.time.Instant
 import java.util.UUID
 
 data class Match(
@@ -8,4 +9,7 @@ data class Match(
     val teams: List<Team>,
     val events: MutableList<Event> = mutableListOf(),
     var diskHolderId: UUID? = null,
+    val plannedStartTimestamp: Instant? = null,
+    var startedAt: Instant? = null,
+    var endedAt: Instant? = null,
 )

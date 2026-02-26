@@ -56,7 +56,7 @@ class TeamControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/teams")
+            post("/api/v1/teams")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
@@ -70,14 +70,14 @@ class TeamControllerTest {
     fun `Получение команды по ID возвращает 200`() {
         val (team, _) = createTestTeam()
 
-        mockMvc.perform(get("/api/teams/${team.id}"))
+        mockMvc.perform(get("/api/v1/teams/${team.id}"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.name").value(team.name))
     }
 
     @Test
     fun `Получение несуществующей команды возвращает 404`() {
-        mockMvc.perform(get("/api/teams/${UUID.randomUUID()}"))
+        mockMvc.perform(get("/api/v1/teams/${UUID.randomUUID()}"))
             .andExpect(status().isNotFound)
     }
 
@@ -86,7 +86,7 @@ class TeamControllerTest {
         createTestTeam("Team 1")
         createTestTeam("Team 2")
 
-        mockMvc.perform(get("/api/teams"))
+        mockMvc.perform(get("/api/v1/teams"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
     }
@@ -95,10 +95,10 @@ class TeamControllerTest {
     fun `Удаление команды возвращает 204`() {
         val (team, _) = createTestTeam()
 
-        mockMvc.perform(delete("/api/teams/${team.id}"))
+        mockMvc.perform(delete("/api/v1/teams/${team.id}"))
             .andExpect(status().isNoContent)
 
-        mockMvc.perform(get("/api/teams/${team.id}"))
+        mockMvc.perform(get("/api/v1/teams/${team.id}"))
             .andExpect(status().isNotFound)
     }
 
@@ -115,7 +115,7 @@ class TeamControllerTest {
         )
         playerService.create(newPlayer)
 
-        mockMvc.perform(post("/api/teams/${team.id}/players/${newPlayer.id}"))
+        mockMvc.perform(post("/api/v1/teams/${team.id}/players/${newPlayer.id}"))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.players.length()").value(players.size + 1))
     }
@@ -125,7 +125,7 @@ class TeamControllerTest {
         val (team, players) = createTestTeam()
         val playerId = players.first().id
 
-        mockMvc.perform(delete("/api/teams/${team.id}/players/$playerId"))
+        mockMvc.perform(delete("/api/v1/teams/${team.id}/players/$playerId"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.players.length()").value(players.size - 1))
     }
