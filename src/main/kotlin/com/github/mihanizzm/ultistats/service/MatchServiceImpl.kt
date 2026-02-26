@@ -1,5 +1,6 @@
 package com.github.mihanizzm.ultistats.service
 
+import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.exception.EntityNotFoundException
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.events.*
@@ -25,6 +26,14 @@ class MatchServiceImpl(
     override fun delete(matchId: UUID) = matchRepository.delete(matchId)
 
     override fun getAll(): List<Match> = matchRepository.getAll()
+
+    override fun findAllFiltered(filter: MatchFilterRequest): List<Match> =
+        matchRepository.findAllFiltered(filter)
+
+    override fun count(): Long = matchRepository.count()
+
+    override fun countFiltered(filter: MatchFilterRequest): Long =
+        matchRepository.countFiltered(filter)
 
     override fun recalculateDiskHolder(matchId: UUID) {
         val match = getOrThrow(matchId)

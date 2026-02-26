@@ -12,4 +12,11 @@ data class Match(
     val plannedStartTimestamp: Instant? = null,
     var startedAt: Instant? = null,
     var endedAt: Instant? = null,
-)
+) {
+    val status: MatchStatus
+        get() = when {
+            endedAt != null -> MatchStatus.FINISHED
+            startedAt != null -> MatchStatus.IN_PROGRESS
+            else -> MatchStatus.PLANNED
+        }
+}

@@ -1,9 +1,13 @@
 package com.github.mihanizzm.ultistats.controller
 
+import com.github.mihanizzm.ultistats.dto.common.PageResponse
+import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
+import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.facade.PlayerFacade
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -17,8 +21,28 @@ class PlayerController(
     private val playerFacade: PlayerFacade,
 ) {
     @GetMapping
-    @Operation(summary = "Получить всех игроков")
-    fun getAll(): List<PlayerResponse> = playerFacade.getAll()
+    @Operation(summary = "Получить игроков с пагинацией, фильтрацией и сортировкой")
+    fun getAll(
+        @Parameter(description = "Номер страницы (начиная с 0)")
+        @RequestParam(defaultValue = "0") page: Int,
+        @Parameter(description = "Размер страницы")
+        @RequestParam(defaultValue = "20") size: Int,
+        @Parameter(description = "Фильтр по имени (частичное совпадение)")
+        @RequestParam(required = false) name: String?,
+        @Parameter(description = "Фильтр по ID команды")
+        @RequestParam(required = false) teamId: UUID?,
+        @Parameter(
+            description = "Сортировка. Формат: field:direction. " +
+                "Доступные поля: lastName, firstName, number, teamId. " +
+                "По умолчанию: lastName:asc",
+            example = "lastName:asc"
+        )
+        @RequestParam(required = false) sort: String?,
+    ): PageResponse<PlayerResponse> {
+        val filter = PlayerFilterRequest(name = name, teamId = teamId)
+        val sortParam = sort?.let { SortParam.parse(it) } ?: PlayerFacade.DEFAULT_SORT
+        return playerFacade.getAllPaged(page, size, filter, sortParam)
+    }
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить игрока по ID")

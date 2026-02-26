@@ -1,5 +1,6 @@
 package com.github.mihanizzm.ultistats.service
 
+import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.model.Team
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -21,4 +22,12 @@ class TeamServiceImpl(
     override fun getAll(): List<Team> = teamRepository.getAll()
 
     override fun getAllInList(ids: List<UUID>): List<Team> = teamRepository.getAllInList(ids)
+
+    override fun findAllFiltered(filter: TeamFilterRequest): List<Team> =
+        teamRepository.findAllFiltered(filter)
+
+    override fun count(): Long = teamRepository.count()
+
+    override fun countFiltered(filter: TeamFilterRequest): Long =
+        teamRepository.countFiltered(filter)
 }

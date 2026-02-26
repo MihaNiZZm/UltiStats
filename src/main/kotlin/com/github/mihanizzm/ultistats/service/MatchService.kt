@@ -1,5 +1,6 @@
 package com.github.mihanizzm.ultistats.service
 
+import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.model.Match
 import java.time.Instant
 import java.util.UUID
@@ -14,6 +15,12 @@ interface MatchService {
     fun delete(matchId: UUID)
 
     fun getAll(): List<Match>
+
+    fun findAllFiltered(filter: MatchFilterRequest): List<Match>
+
+    fun count(): Long
+
+    fun countFiltered(filter: MatchFilterRequest): Long
 
     /**
      * Пересчитать владельца диска на основе списка событий матча.

@@ -1,9 +1,13 @@
 package com.github.mihanizzm.ultistats.controller
 
+import com.github.mihanizzm.ultistats.dto.common.PageResponse
+import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
+import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -17,8 +21,25 @@ class TeamController(
     private val teamFacade: TeamFacade,
 ) {
     @GetMapping
-    @Operation(summary = "Получить все команды")
-    fun getAll(): List<TeamResponse> = teamFacade.getAll()
+    @Operation(summary = "Получить команды с пагинацией, фильтрацией и сортировкой")
+    fun getAll(
+        @Parameter(description = "Номер страницы (начиная с 0)")
+        @RequestParam(defaultValue = "0") page: Int,
+        @Parameter(description = "Размер страницы")
+        @RequestParam(defaultValue = "20") size: Int,
+        @Parameter(description = "Фильтр по названию (частичное совпадение)")
+        @RequestParam(required = false) name: String?,
+        @Parameter(
+            description = "Сортировка. Формат: field:direction. " +
+                "Доступные поля: name. По умолчанию: name:asc",
+            example = "name:asc"
+        )
+        @RequestParam(required = false) sort: String?,
+    ): PageResponse<TeamResponse> {
+        val filter = TeamFilterRequest(name = name)
+        val sortParam = sort?.let { SortParam.parse(it) } ?: TeamFacade.DEFAULT_SORT
+        return teamFacade.getAllPaged(page, size, filter, sortParam)
+    }
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить команду по ID")
