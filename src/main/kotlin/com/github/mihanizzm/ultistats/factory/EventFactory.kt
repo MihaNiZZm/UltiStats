@@ -14,7 +14,7 @@ class EventFactory {
     fun createFromRequest(request: CreateEventRequest): Event? {
         return when (request.type.category) {
             EventCategory.ONE_PLAYER -> {
-                if (request.playerId == null) return null
+                if (request.playerId == null || request.teamId == null) return null
                 OnePlayerEvent(
                     player = request.playerId,
                     team = request.teamId,
@@ -23,7 +23,8 @@ class EventFactory {
                 )
             }
             EventCategory.TWO_PLAYER -> {
-                if (request.playerId == null || request.toPlayerId == null || request.toTeamId == null) return null
+                if (request.playerId == null || request.toPlayerId == null ||
+                    request.teamId == null || request.toTeamId == null) return null
                 TwoPlayerEvent(
                     fromPlayer = request.playerId,
                     toPlayer = request.toPlayerId,
@@ -34,6 +35,7 @@ class EventFactory {
                 )
             }
             EventCategory.TEAM -> {
+                if (request.teamId == null) return null
                 TeamEvent(
                     team = request.teamId,
                     realTimestamp = request.timestamp,

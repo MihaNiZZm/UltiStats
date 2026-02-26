@@ -7,7 +7,7 @@ import java.util.UUID
 data class CreateEventRequest(
     val type: EventType,
     val timestamp: Instant,
-    val teamId: UUID,
+    val teamId: UUID? = null,
     val playerId: UUID? = null,
     val toTeamId: UUID? = null,
     val toPlayerId: UUID? = null,
