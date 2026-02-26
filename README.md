@@ -1,7 +1,35 @@
 # Ultimate Frisbee Stats
 
-**Ultimate Frisbee Stats** — это современное веб-приложение для ведения статистики по алтимат-фрисби в реальном времени.  
+**Ultimate Frisbee Stats** — это современное веб-приложение для ведения статистики по алтимат-фрисби в реальном времени.
 Система ориентирована на удобство для стаффа: быстрый ввод событий, мгновенное обновление статистики, удобная интеграция с другими сервисами и простота масштабируемости.
+
+---
+
+## Быстрый старт (Docker)
+
+Самый простой способ запустить приложение — через Docker:
+
+```bash
+# Клонировать репозиторий
+git clone https://github.com/UltiStatsDev/ultistats-backend.git
+cd ultistats-backend
+
+# Запустить через docker-compose
+docker-compose up -d
+
+# Или собрать и запустить вручную
+docker build -t ultistats .
+docker run -p 8080:8080 ultistats
+```
+
+После запуска:
+- **API:** http://localhost:8080/api/v1/
+- **Swagger UI:** http://localhost:8080/swagger-ui.html
+
+Остановка:
+```bash
+docker-compose down
+```
 
 ---
 
