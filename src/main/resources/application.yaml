@@ -1,3 +1,8 @@
 spring:
   application:
     name: ultistats
+
+ultistats:
+  persistence:
+    path: ./data/ultistats.json
+    interval: 30000
