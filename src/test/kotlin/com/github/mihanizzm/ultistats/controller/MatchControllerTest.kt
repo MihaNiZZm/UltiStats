@@ -3,6 +3,7 @@ package com.github.mihanizzm.ultistats.controller
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
@@ -268,6 +269,54 @@ class MatchControllerTest {
             .andExpect(jsonPath("$.content[0].status").value("FINISHED"))
             .andExpect(jsonPath("$.content[1].status").value("IN_PROGRESS"))
             .andExpect(jsonPath("$.content[2].status").value("PLANNED"))
+    }
+
+    @Test
+    fun `Частичное обновление матча (только plannedStartTimestamp) работает`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+
+        val newTimestamp = Instant.now().plusSeconds(3600)
+        val updateRequest = UpdateMatchRequest(plannedStartTimestamp = newTimestamp)
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.plannedStartTimestamp").exists())
+    }
+
+    @Test
+    fun `Частичное обновление матча (только teamIds) работает`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val team3 = createTestTeam("Команда 3")
+        val match = createTestMatch(team1, team2)
+
+        val updateRequest = UpdateMatchRequest(teamIds = listOf(team1.id, team3.id))
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.teams.length()").value(2))
+    }
+
+    @Test
+    fun `Обновление несуществующего матча возвращает 404`() {
+        val updateRequest = UpdateMatchRequest(plannedStartTimestamp = Instant.now())
+
+        mockMvc.perform(
+            put("/api/v1/matches/${UUID.randomUUID()}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isNotFound)
     }
 
     private fun createTestMatchWithTimestamp(team1: Team, team2: Team, plannedStart: Instant): Match {

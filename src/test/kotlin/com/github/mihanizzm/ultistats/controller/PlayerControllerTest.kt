@@ -2,6 +2,7 @@ package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -210,6 +211,54 @@ class PlayerControllerTest {
             .andExpect(jsonPath("$.content[0].lastName").value("Гамма"))
             .andExpect(jsonPath("$.content[1].lastName").value("Бета"))
             .andExpect(jsonPath("$.content[2].lastName").value("Альфа"))
+    }
+
+    @Test
+    fun `Частичное обновление игрока (только firstName) работает`() {
+        val player = createTestPlayer("Иван", "Иванов")
+
+        val updateRequest = UpdatePlayerRequest(firstName = "Обновлённый")
+
+        mockMvc.perform(
+            put("/api/v1/players/${player.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.firstName").value("Обновлённый"))
+            .andExpect(jsonPath("$.lastName").value("Иванов"))
+    }
+
+    @Test
+    fun `Частичное обновление игрока (несколько полей) работает`() {
+        val player = createTestPlayerWithNumber("Иван", "Иванов", 10)
+
+        val updateRequest = UpdatePlayerRequest(
+            firstName = "Пётр",
+            number = 99
+        )
+
+        mockMvc.perform(
+            put("/api/v1/players/${player.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.firstName").value("Пётр"))
+            .andExpect(jsonPath("$.lastName").value("Иванов"))
+            .andExpect(jsonPath("$.number").value(99))
+    }
+
+    @Test
+    fun `Обновление несуществующего игрока возвращает 404`() {
+        val updateRequest = UpdatePlayerRequest(firstName = "Test")
+
+        mockMvc.perform(
+            put("/api/v1/players/${UUID.randomUUID()}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isNotFound)
     }
 
     private fun createTestPlayerWithNumber(firstName: String, lastName: String, number: Int): Player {

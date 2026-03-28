@@ -5,6 +5,7 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.facade.MatchFacade
 import com.github.mihanizzm.ultistats.model.MatchStatus
@@ -81,6 +82,16 @@ class MatchController(
         matchFacade.create(request)
             ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
             ?: ResponseEntity.badRequest().build()
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Обновить матч (частичное обновление)")
+    fun update(
+        @PathVariable id: UUID,
+        @RequestBody request: UpdateMatchRequest
+    ): ResponseEntity<MatchResponse> =
+        matchFacade.update(id, request)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить матч")

@@ -4,6 +4,7 @@ import com.github.mihanizzm.ultistats.dto.common.PageResponse
 import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -77,20 +78,24 @@ class PlayerFacade(
         return PlayerResponse.from(player)
     }
 
-    fun update(id: UUID, request: CreatePlayerRequest): PlayerResponse? {
+    fun update(id: UUID, request: UpdatePlayerRequest): PlayerResponse? {
         val existingPlayer = playerService.get(id) ?: return null
         val oldTeamId = existingPlayer.teamId
+        // teamId может быть null в request, что означает "не менять"
+        // но также teamId может быть null у игрока (игрок без команды)
+        val shouldUpdateTeam = request.teamId != null
         val newTeamId = request.teamId
 
         val updatedPlayer = existingPlayer.copy(
-            number = request.number,
-            firstName = request.firstName,
-            lastName = request.lastName,
-            teamId = newTeamId,
+            number = request.number ?: existingPlayer.number,
+            firstName = request.firstName ?: existingPlayer.firstName,
+            lastName = request.lastName ?: existingPlayer.lastName,
+            teamId = if (shouldUpdateTeam) newTeamId else existingPlayer.teamId,
         )
         playerService.update(updatedPlayer)
 
-        if (oldTeamId != newTeamId) {
+        // Обновляем связи с командами только если teamId был явно передан
+        if (shouldUpdateTeam && oldTeamId != newTeamId) {
             oldTeamId?.let { oldId ->
                 teamService.get(oldId)?.let { oldTeam ->
                     val updated = oldTeam.copy(playerIds = oldTeam.playerIds - id)

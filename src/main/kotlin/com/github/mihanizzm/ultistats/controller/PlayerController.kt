@@ -4,6 +4,7 @@ import com.github.mihanizzm.ultistats.dto.common.PageResponse
 import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.facade.PlayerFacade
 import io.swagger.v3.oas.annotations.Operation
@@ -65,8 +66,8 @@ class PlayerController(
         ResponseEntity.status(HttpStatus.CREATED).body(playerFacade.create(request))
 
     @PutMapping("/{id}")
-    @Operation(summary = "Обновить игрока")
-    fun update(@PathVariable id: UUID, @RequestBody request: CreatePlayerRequest): ResponseEntity<PlayerResponse> =
+    @Operation(summary = "Обновить игрока (частичное обновление)")
+    fun update(@PathVariable id: UUID, @RequestBody request: UpdatePlayerRequest): ResponseEntity<PlayerResponse> =
         playerFacade.update(id, request)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()

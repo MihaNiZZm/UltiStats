@@ -1,6 +1,7 @@
 package com.github.mihanizzm.ultistats.controller
 
 import com.github.mihanizzm.ultistats.dto.request.CreateEventRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateEventRequest
 import com.github.mihanizzm.ultistats.dto.response.EventResponse
 import com.github.mihanizzm.ultistats.facade.EventFacade
 import com.github.mihanizzm.ultistats.facade.EventResult
@@ -40,11 +41,11 @@ class EventController(
         }
 
     @PutMapping("/{index}")
-    @Operation(summary = "Изменить событие по индексу")
-    fun edit(
+    @Operation(summary = "Изменить событие по индексу (частичное обновление)")
+    fun update(
         @PathVariable matchId: UUID,
         @PathVariable index: Int,
-        @RequestBody request: CreateEventRequest
+        @RequestBody request: UpdateEventRequest
     ): ResponseEntity<EventResponse> =
         when (val result = eventFacade.edit(matchId, index, request)) {
             is EventResult.Success -> ResponseEntity.ok(result.response)
