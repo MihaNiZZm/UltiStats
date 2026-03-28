@@ -5,6 +5,7 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
@@ -75,6 +76,24 @@ class MatchFacade(
         )
         matchService.create(match)
         return MatchResponse.from(match, getPlayersByTeamId(match))
+    }
+
+    fun update(id: UUID, request: UpdateMatchRequest): MatchResponse? {
+        val existingMatch = matchService.get(id) ?: return null
+
+        val newTeamIds = request.teamIds ?: existingMatch.teams.map { it.id }
+        val newTeams = teamService.getAllInList(newTeamIds)
+        if (newTeams.size != newTeamIds.size) {
+            return null
+        }
+
+        val updatedMatch = existingMatch.copy(
+            teams = newTeams,
+            plannedStartTimestamp = request.plannedStartTimestamp ?: existingMatch.plannedStartTimestamp,
+        )
+        matchService.delete(id)
+        matchService.create(updatedMatch)
+        return MatchResponse.from(updatedMatch, getPlayersByTeamId(updatedMatch))
     }
 
     fun delete(id: UUID): Boolean {

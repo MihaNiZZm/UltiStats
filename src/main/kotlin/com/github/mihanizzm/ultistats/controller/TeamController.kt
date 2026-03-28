@@ -4,6 +4,7 @@ import com.github.mihanizzm.ultistats.dto.common.PageResponse
 import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
 import io.swagger.v3.oas.annotations.Operation
@@ -60,8 +61,8 @@ class TeamController(
         ResponseEntity.status(HttpStatus.CREATED).body(teamFacade.create(request))
 
     @PutMapping("/{id}")
-    @Operation(summary = "Обновить команду")
-    fun update(@PathVariable id: UUID, @RequestBody request: CreateTeamRequest): ResponseEntity<TeamResponse> =
+    @Operation(summary = "Обновить команду (частичное обновление)")
+    fun update(@PathVariable id: UUID, @RequestBody request: UpdateTeamRequest): ResponseEntity<TeamResponse> =
         teamFacade.update(id, request)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()

@@ -2,6 +2,7 @@ package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.dto.request.CreateEventRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateEventRequest
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
@@ -196,6 +197,53 @@ class EventControllerTest {
             post("/api/v1/matches/${UUID.randomUUID()}/events")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `Частичное обновление события (PUT только timestamp) работает`() {
+        val player = players1.first()
+
+        // Создаём событие
+        createEvent(EventType.TURNOVER, team1.id, player.id)
+
+        val newTimestamp = Instant.now().plusSeconds(100)
+        val updateRequest = UpdateEventRequest(timestamp = newTimestamp)
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}/events/0")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `Частичное обновление события (PUT только type) работает`() {
+        val player = players1.first()
+
+        // Создаём событие TURNOVER
+        createEvent(EventType.TURNOVER, team1.id, player.id)
+
+        val updateRequest = UpdateEventRequest(type = EventType.DROP)
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}/events/0")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `Частичное обновление несуществующего события возвращает 404`() {
+        val updateRequest = UpdateEventRequest(timestamp = Instant.now())
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}/events/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
         )
             .andExpect(status().isNotFound)
     }

@@ -2,6 +2,7 @@ package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -198,6 +199,60 @@ class TeamControllerTest {
             .andExpect(jsonPath("$.content[0].name").value("Gamma"))
             .andExpect(jsonPath("$.content[1].name").value("Beta"))
             .andExpect(jsonPath("$.content[2].name").value("Alpha"))
+    }
+
+    @Test
+    fun `Частичное обновление команды (только name) работает`() {
+        val (team, _) = createTestTeam("Old Name")
+
+        val updateRequest = UpdateTeamRequest(name = "New Name")
+
+        mockMvc.perform(
+            put("/api/v1/teams/${team.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("New Name"))
+    }
+
+    @Test
+    fun `Частичное обновление команды (только playerIds) работает`() {
+        val (team, oldPlayers) = createTestTeam("Test Team")
+
+        // Создаём нового игрока
+        val newPlayer = Player(
+            id = UUID.randomUUID(),
+            teamId = null,
+            number = 99,
+            firstName = "Новый",
+            lastName = "Игрок",
+        )
+        playerService.create(newPlayer)
+
+        val updateRequest = UpdateTeamRequest(playerIds = listOf(newPlayer.id))
+
+        mockMvc.perform(
+            put("/api/v1/teams/${team.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("Test Team"))
+            .andExpect(jsonPath("$.players.length()").value(1))
+            .andExpect(jsonPath("$.players[0].id").value(newPlayer.id.toString()))
+    }
+
+    @Test
+    fun `Обновление несуществующей команды возвращает 404`() {
+        val updateRequest = UpdateTeamRequest(name = "Test")
+
+        mockMvc.perform(
+            put("/api/v1/teams/${UUID.randomUUID()}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isNotFound)
     }
 
     private fun createTestTeam(name: String = "Test Team"): Pair<Team, List<Player>> {

@@ -4,6 +4,7 @@ import com.github.mihanizzm.ultistats.dto.common.PageResponse
 import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
+import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -79,29 +80,35 @@ class TeamFacade(
         return TeamResponse.from(team, players)
     }
 
-    fun update(id: UUID, request: CreateTeamRequest): TeamResponse? {
+    fun update(id: UUID, request: UpdateTeamRequest): TeamResponse? {
         val existingTeam = teamService.get(id) ?: return null
 
-        existingTeam.playerIds.forEach { playerId ->
+        // Обновляем teamId у игроков, если playerIds был передан
+        val oldPlayerIds = existingTeam.playerIds
+        val newPlayerIds = request.playerIds ?: existingTeam.playerIds
+
+        // Убираем teamId у игроков, которые были удалены из команды
+        (oldPlayerIds - newPlayerIds).forEach { playerId ->
             playerService.get(playerId)?.let { player ->
                 playerService.update(player.copy(teamId = null))
             }
         }
 
-        request.playerIds.forEach { playerId ->
+        // Добавляем teamId у новых игроков
+        (newPlayerIds - oldPlayerIds).forEach { playerId ->
             playerService.get(playerId)?.let { player ->
                 playerService.update(player.copy(teamId = id))
             }
         }
 
         val updatedTeam = existingTeam.copy(
-            name = request.name,
-            playerIds = request.playerIds,
+            name = request.name ?: existingTeam.name,
+            playerIds = newPlayerIds,
         )
         teamService.delete(id)
         teamService.create(updatedTeam)
 
-        val players = playerService.getAllByIds(request.playerIds)
+        val players = playerService.getAllByIds(newPlayerIds)
         return TeamResponse.from(updatedTeam, players)
     }
 
