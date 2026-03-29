@@ -9,4 +9,5 @@ import java.util.UUID
 data class UpdateTeamRequest(
     val name: String? = null,
     val playerIds: List<UUID>? = null,
+    val city: String? = null,
 )

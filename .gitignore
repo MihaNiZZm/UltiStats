@@ -44,5 +44,8 @@ out/
 ### Claude Code ###
 CLAUDE.md
 
+### Qwen Code ###
+.qwen
+
 ### Persistence Data ###
 data/

@@ -5,18 +5,22 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
+import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.model.Team
+import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 @Component
 class TeamFacade(
     private val teamService: TeamService,
     private val playerService: PlayerService,
+    private val localFileStorageService: LocalFileStorageService,
 ) {
     companion object {
         val DEFAULT_SORT = SortParam("name")
@@ -73,6 +77,7 @@ class TeamFacade(
             id = teamId,
             name = request.name,
             playerIds = request.playerIds,
+            city = request.city,
         )
         teamService.create(team)
 
@@ -104,6 +109,7 @@ class TeamFacade(
         val updatedTeam = existingTeam.copy(
             name = request.name ?: existingTeam.name,
             playerIds = newPlayerIds,
+            city = request.city ?: existingTeam.city,
         )
         teamService.delete(id)
         teamService.create(updatedTeam)
@@ -168,5 +174,29 @@ class TeamFacade(
 
         val players = playerService.getAllByIds(updatedTeam.playerIds)
         return TeamResponse.from(updatedTeam, players)
+    }
+
+    fun uploadPhoto(teamId: UUID, file: MultipartFile): PhotoUrlResponse? {
+        val team = teamService.get(teamId) ?: return null
+        val url = localFileStorageService.upload(file) ?: return null
+
+        val newTeam = team.copy(photoUrl = url)
+        teamService.delete(team.id)
+        teamService.create(newTeam)
+        return PhotoUrlResponse(url)
+    }
+
+    fun getPhotoUrl(teamId: UUID): PhotoUrlResponse? {
+        val url = teamService.get(teamId)?.photoUrl ?: return null
+        return teamService.get(teamId)?.let { PhotoUrlResponse(url) }
+    }
+
+    fun deletePhotoUrl(teamId: UUID): PhotoUrlResponse? {
+        val team = teamService.get(teamId) ?: return null
+        val url = team.photoUrl ?: return PhotoUrlResponse(null)
+        val newTeam = team.copy(photoUrl = null)
+        teamService.delete(team.id)
+        teamService.create(newTeam)
+        return PhotoUrlResponse(url)
     }
 }

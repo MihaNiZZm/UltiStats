@@ -5,4 +5,5 @@ import java.util.UUID
 data class CreateTeamRequest(
     val name: String,
     val playerIds: List<UUID> = emptyList(),
+    val city: String? = null,
 )
