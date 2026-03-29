@@ -6,11 +6,14 @@ import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.SystemEvent
+import com.github.mihanizzm.ultistats.model.events.TeamEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -100,11 +104,47 @@ class StatisticsControllerTest {
             .andExpect(jsonPath("$.teamStatistics[?(@.teamId=='${team1.id}')].attack.completePasses").value(1))
     }
 
+    @Test
+    fun `Duration сериализуется в ISO-8601 строку`() {
+        // Создаём события с таймаутом для проверки timeStatistics
+        val now = Instant.now()
+        eventService.create(OnePlayerEvent(players1[0].id, team1.id, now, EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(players2[0].id, team2.id, now.plusSeconds(10), EventType.TURNOVER), match.id)
+        eventService.create(TeamEvent(team2.id, now.plusSeconds(15), EventType.TIMEOUT_START), match.id)
+        eventService.create(TeamEvent(team2.id, now.plusSeconds(75), EventType.TIMEOUT_END), match.id)
+        eventService.create(TwoPlayerEvent(players2[0].id, players2[1].id, team2.id, team2.id, now.plusSeconds(90), EventType.PASS), match.id)
+        eventService.create(TwoPlayerEvent(players2[1].id, players2[2].id, team2.id, team2.id, now.plusSeconds(100), EventType.GOAL), match.id)
+
+        val result = mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val json = result.response.contentAsString
+        val tree = objectMapper.readTree(json)
+
+        // Проверяем, что timeStatistics поля - строки в ISO-8601 формате
+        val timeStats = tree.get("timeStatistics")
+        assertThat(timeStats.get("timeSpentOnTimeouts").isTextual).isTrue()
+        assertThat(timeStats.get("timeSpentOnTimeouts").asText()).isNotEmpty()
+        assertThat(timeStats.get("timeSpentBetweenPoints").isTextual).isTrue()
+        assertThat(timeStats.get("pureGameTime").isTextual).isTrue()
+
+        // Проверяем, что поля времени в teamStatistics тоже строки
+        val team2Stats = tree.get("teamStatistics").find { it.get("teamId").asText() == team2.id.toString() }
+        assertThat(team2Stats?.get("time")?.get("totalPossessionTime")?.isTextual).isTrue()
+        assertThat(team2Stats?.get("time")?.get("totalTimeSpentOnTimeouts")?.isTextual).isTrue()
+
+        // Проверяем, что поля времени в playerStatistics тоже строки
+        val playerStats = tree.get("playerStatistics").first()
+        assertThat(playerStats.get("time").get("totalPossessionTime").isTextual).isTrue()
+    }
+
     private fun createTestTeam(name: String): Pair<Team, List<Player>> {
         val teamId = UUID.randomUUID()
         val players = listOf(
             Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
             Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
+            Player(UUID.randomUUID(), teamId, 3, "Игрок", "Три"),
         )
         players.forEach { playerService.create(it) }
 
