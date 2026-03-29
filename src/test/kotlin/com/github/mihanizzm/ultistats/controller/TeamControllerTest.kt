@@ -3,19 +3,24 @@ package com.github.mihanizzm.ultistats.controller
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
+import com.github.mihanizzm.ultistats.facade.TeamFacade
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.UUID
 
 @SpringBootTest
@@ -33,6 +38,9 @@ class TeamControllerTest {
 
     @Autowired
     lateinit var playerService: PlayerService
+
+    @Autowired
+    lateinit var teamFacade: TeamFacade
 
     @BeforeEach
     fun setup() {
@@ -253,6 +261,37 @@ class TeamControllerTest {
                 .content(objectMapper.writeValueAsString(updateRequest))
         )
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `Создание команды с городом сохраняет город`() {
+        val request = CreateTeamRequest(
+            name = "Team with City",
+            city = "Москва",
+        )
+
+        mockMvc.perform(
+            post("/api/v1/teams")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.city").value("Москва"))
+    }
+
+    @Test
+    fun `Обновление команды с городом обновляет город`() {
+        val (team, _) = createTestTeam("Test Team")
+
+        val updateRequest = UpdateTeamRequest(city = "Санкт-Петербург")
+
+        mockMvc.perform(
+            put("/api/v1/teams/${team.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.city").value("Санкт-Петербург"))
     }
 
     private fun createTestTeam(name: String = "Test Team"): Pair<Team, List<Player>> {

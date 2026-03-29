@@ -5,14 +5,17 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
+import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 @RestController
@@ -91,6 +94,31 @@ class TeamController(
         @PathVariable playerId: UUID
     ): ResponseEntity<TeamResponse> =
         teamFacade.removePlayerFromTeam(teamId, playerId)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @PostMapping("/{teamId}/uploadPhoto", consumes =
+    [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @Operation(summary = "Загрузить аватар для команды")
+    fun uploadPhoto(
+        @PathVariable teamId: UUID,
+        @RequestBody multipartFile: MultipartFile,
+    ): ResponseEntity<PhotoUrlResponse> =
+        teamFacade.uploadPhoto(teamId, multipartFile)
+            ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @GetMapping("/{teamId}/photoUrl")
+    @Operation(summary = "Получить URL изображения команды")
+    fun getPhotoUrl(@PathVariable teamId: UUID): ResponseEntity<PhotoUrlResponse> =
+        teamFacade.getPhotoUrl(teamId)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @DeleteMapping("/{teamId}/photoUrl")
+    @Operation(summary = "Удалить URL изображения команды")
+    fun removePhotoUrl(@PathVariable teamId: UUID): ResponseEntity<PhotoUrlResponse> =
+        teamFacade.deletePhotoUrl(teamId)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 }
