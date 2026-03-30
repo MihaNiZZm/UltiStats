@@ -16,6 +16,7 @@ class EventServiceImpl(
     override fun create(event: Event, matchId: UUID): UUID? {
         val match = matchService.getOrThrow(matchId)
         match.events.add(event)
+        match.recalculateTeamScores()
         matchService.recalculateDiskHolder(matchId)
         return match.diskHolderId
     }
@@ -27,6 +28,7 @@ class EventServiceImpl(
         val match = matchService.getOrThrow(matchId)
         checkEventExistence(index, match)
         match.events[index] = event
+        match.recalculateTeamScores()
         matchService.recalculateDiskHolder(matchId)
         return match.diskHolderId
     }
@@ -38,6 +40,7 @@ class EventServiceImpl(
         val match = matchService.getOrThrow(matchId)
         checkEventExistence(index, match)
         match.events.removeAt(index)
+        match.recalculateTeamScores()
         matchService.recalculateDiskHolder(matchId)
         return match.diskHolderId
     }
