@@ -9,6 +9,7 @@ import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
+import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
@@ -35,7 +36,8 @@ class MatchFacade(
 
     fun getAll(): List<MatchResponse> =
         matchService.getAll().map { match ->
-            MatchResponse.from(match, getPlayersByTeamId(match))
+            val teams = teamService.getAllInList(match.teamIds)
+            MatchResponse.from(match, teams.associateBy { it.id }, getPlayersByTeamId(match, teams.associateBy { it.id }))
         }
 
     fun getAllPaged(
@@ -53,7 +55,8 @@ class MatchFacade(
             .drop(page * size)
             .take(size)
             .map { match ->
-                MatchResponse.from(match, getPlayersByTeamId(match))
+                val teams = teamService.getAllInList(match.teamIds)
+                MatchResponse.from(match, teams.associateBy { it.id }, getPlayersByTeamId(match, teams.associateBy { it.id }))
             }
 
         return PageResponse.of(content, totalElements, page, size)
@@ -61,7 +64,8 @@ class MatchFacade(
 
     fun getById(id: UUID): MatchResponse? {
         val match = matchService.get(id) ?: return null
-        return MatchResponse.from(match, getPlayersByTeamId(match))
+        val teams = teamService.getAllInList(match.teamIds)
+        return MatchResponse.from(match, teams.associateBy { it.id }, getPlayersByTeamId(match, teams.associateBy { it.id }))
     }
 
     fun create(request: CreateMatchRequest): MatchResponse? {
@@ -71,29 +75,30 @@ class MatchFacade(
         }
         val match = Match(
             id = UUID.randomUUID(),
-            teams = teams,
+            teamIds = request.teamIds,
             plannedStartTimestamp = request.plannedStartTimestamp,
         )
         matchService.create(match)
-        return MatchResponse.from(match, getPlayersByTeamId(match))
+        return MatchResponse.from(match, teams.associateBy { it.id }, getPlayersByTeamId(match, teams.associateBy { it.id }))
     }
 
     fun update(id: UUID, request: UpdateMatchRequest): MatchResponse? {
         val existingMatch = matchService.get(id) ?: return null
 
-        val newTeamIds = request.teamIds ?: existingMatch.teams.map { it.id }
-        val newTeams = teamService.getAllInList(newTeamIds)
-        if (newTeams.size != newTeamIds.size) {
+        val newTeamIds = request.teamIds ?: existingMatch.teamIds
+        val teams = teamService.getAllInList(newTeamIds)
+        val teamsById = teams.associateBy { it.id }
+        if (teams.size != newTeamIds.size) {
             return null
         }
 
         val updatedMatch = existingMatch.copy(
-            teams = newTeams,
+            teamIds = newTeamIds,
             plannedStartTimestamp = request.plannedStartTimestamp ?: existingMatch.plannedStartTimestamp,
         )
         matchService.delete(id)
         matchService.create(updatedMatch)
-        return MatchResponse.from(updatedMatch, getPlayersByTeamId(updatedMatch))
+        return MatchResponse.from(updatedMatch, teamsById, getPlayersByTeamId(updatedMatch, teamsById))
     }
 
     fun delete(id: UUID): Boolean {
@@ -107,7 +112,8 @@ class MatchFacade(
         if (!matchService.startMatch(id, request.timestamp)) {
             return null
         }
-        return MatchResponse.from(match, getPlayersByTeamId(match))
+        val teams = teamService.getAllInList(match.teamIds)
+        return MatchResponse.from(match, teams.associateBy { it.id }, getPlayersByTeamId(match, teams.associateBy { it.id }))
     }
 
     fun endMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
@@ -115,11 +121,14 @@ class MatchFacade(
         if (!matchService.endMatch(id, request.timestamp)) {
             return null
         }
-        return MatchResponse.from(match, getPlayersByTeamId(match))
+        val teams = teamService.getAllInList(match.teamIds)
+        return MatchResponse.from(match, teams.associateBy { it.id }, getPlayersByTeamId(match, teams.associateBy { it.id }))
     }
 
-    private fun getPlayersByTeamId(match: Match): Map<UUID, List<Player>> =
-        match.teams.associate { team ->
-            team.id to playerService.getAllByIds(team.playerIds)
-        }
+    private fun getPlayersByTeamId(match: Match, teamsById: Map<UUID, Team>): Map<UUID, List<Player>> =
+        match.teamIds.mapNotNull { teamId ->
+            teamsById[teamId]?.let { team ->
+                teamId to playerService.getAllByIds(team.playerIds)
+            }
+        }.toMap()
 }

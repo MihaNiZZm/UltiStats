@@ -33,8 +33,7 @@ class MatchRepositoryConcurrentMapImpl : MatchRepository {
 
     private fun matchesFilter(match: Match, filter: MatchFilterRequest): Boolean {
         if (filter.teamId != null) {
-            val teamIds = match.teams.map { it.id }
-            if (filter.teamId !in teamIds) {
+            if (filter.teamId !in match.teamIds) {
                 return false
             }
         }

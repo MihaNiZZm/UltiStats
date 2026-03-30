@@ -33,7 +33,7 @@ class StatisticsServiceImpl(
 
     override fun recalculateMatchStatistics(matchId: UUID): MatchStatistics {
         val match = matchService.getOrThrow(matchId)
-        val teamIds = match.teams.map { it.id }
+        val teamIds = match.teamIds
         val initialStatistics = emptyStatistics(teamIds)
 
         return statisticsAggregatorList.fold(initialStatistics) { stats, aggregator ->

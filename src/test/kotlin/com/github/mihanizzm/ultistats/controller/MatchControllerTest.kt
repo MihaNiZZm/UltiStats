@@ -322,7 +322,7 @@ class MatchControllerTest {
     private fun createTestMatchWithTimestamp(team1: Team, team2: Team, plannedStart: Instant): Match {
         val match = Match(
             id = UUID.randomUUID(),
-            teams = listOf(team1, team2),
+            teamIds = listOf(team1.id, team2.id),
             plannedStartTimestamp = plannedStart,
         )
         matchService.create(match)
@@ -332,7 +332,7 @@ class MatchControllerTest {
     private fun createTestMatch(team1: Team, team2: Team): Match {
         val match = Match(
             id = UUID.randomUUID(),
-            teams = listOf(team1, team2),
+            teamIds = listOf(team1.id, team2.id),
         )
         matchService.create(match)
         return match

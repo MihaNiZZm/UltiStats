@@ -43,7 +43,7 @@ class JsonPersistenceServiceTest {
 
         val match = Match(
             id = MATCH_ID,
-            teams = listOf(team1, team2),
+            teamIds = listOf(team1.id, team2.id),
             events = mutableListOf(
                 OnePlayerEvent(PLAYER_1_ID, TEAM_1_ID, timestamp, EventType.PULL),
                 TwoPlayerEvent(PLAYER_1_ID, PLAYER_2_ID, TEAM_1_ID, TEAM_2_ID, timestamp.plusSeconds(10), EventType.GOAL),
@@ -94,7 +94,7 @@ class JsonPersistenceServiceTest {
 
         val match = Match(
             id = MATCH_ID,
-            teams = listOf(Team(TEAM_1_ID, "Team1", emptyList()), Team(TEAM_2_ID, "Team2", emptyList())),
+            teamIds = listOf(TEAM_1_ID, TEAM_2_ID),
             events = events.toMutableList(),
         )
 

@@ -141,7 +141,7 @@ abstract class MatchAbstractTest {
 
         val MATCH = Match(
             UUIDS[12],
-            listOf(TEAM_1, TEAM_2),
+            listOf(TEAM_1.id, TEAM_2.id),
             mutableListOf<Event>(),
         )
     }

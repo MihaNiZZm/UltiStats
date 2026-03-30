@@ -25,7 +25,7 @@ class LocalFileStorageService : FileStorageService {
 
             Files.copy(file.inputStream, path)
 
-            return "http://localhost:8080/uploads/$key"
+            return "/uploads/$key"
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
@@ -40,6 +40,6 @@ class LocalFileStorageService : FileStorageService {
     }
 
     override fun getUrl(key: String?): String? {
-        return "http://localhost:8080/uploads/$key"
+        return "/uploads/$key"
     }
 }
