@@ -49,6 +49,9 @@ data class Match(
             if (event.type == EventType.GOAL || event.type == EventType.CALLAHAN) {
                 val scoringTeamId = (event as TwoPlayerEvent).toTeam
                 val teamScore = teamScores.find { it.teamId == scoringTeamId }
+                if (teamScore == null) {
+                    throw RuntimeException("Team with this id can't be found")
+                }
                 teamScore?.score = (teamScore?.score ?: 0) + 1
             }
         }
