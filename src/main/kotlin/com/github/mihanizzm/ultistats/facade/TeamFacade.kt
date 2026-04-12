@@ -8,7 +8,6 @@ import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamDetailResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamListItemResponse
-import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -32,10 +31,10 @@ class TeamFacade(
         )
     }
 
-    fun getAll(): List<TeamResponse> =
+    fun getAll(): List<TeamDetailResponse> =
         teamService.getAll().map { team ->
             val players = playerService.getAllByIds(team.playerIds)
-            TeamResponse.from(team, players)
+            TeamDetailResponse.from(team, players)
         }
 
     fun getAllPaged(
@@ -63,7 +62,7 @@ class TeamFacade(
         return TeamDetailResponse.from(team, players)
     }
 
-    fun create(request: CreateTeamRequest): TeamResponse {
+    fun create(request: CreateTeamRequest): TeamDetailResponse {
         val teamId = UUID.randomUUID()
 
         request.playerIds.forEach { playerId ->
@@ -81,10 +80,10 @@ class TeamFacade(
         teamService.create(team)
 
         val players = playerService.getAllByIds(request.playerIds)
-        return TeamResponse.from(team, players)
+        return TeamDetailResponse.from(team, players)
     }
 
-    fun update(id: UUID, request: UpdateTeamRequest): TeamResponse? {
+    fun update(id: UUID, request: UpdateTeamRequest): TeamDetailResponse? {
         val existingTeam = teamService.get(id) ?: return null
 
         // Обновляем teamId у игроков, если playerIds был передан
@@ -114,7 +113,7 @@ class TeamFacade(
         teamService.create(updatedTeam)
 
         val players = playerService.getAllByIds(newPlayerIds)
-        return TeamResponse.from(updatedTeam, players)
+        return TeamDetailResponse.from(updatedTeam, players)
     }
 
     fun delete(id: UUID): Boolean {
@@ -130,13 +129,13 @@ class TeamFacade(
         return true
     }
 
-    fun addPlayerToTeam(teamId: UUID, playerId: UUID): TeamResponse? {
+    fun addPlayerToTeam(teamId: UUID, playerId: UUID): TeamDetailResponse? {
         val team = teamService.get(teamId) ?: return null
         val player = playerService.get(playerId) ?: return null
 
         if (team.hasPlayer(playerId)) {
             val players = playerService.getAllByIds(team.playerIds)
-            return TeamResponse.from(team, players)
+            return TeamDetailResponse.from(team, players)
         }
 
         player.teamId?.let { oldTeamId ->
@@ -156,10 +155,10 @@ class TeamFacade(
         teamService.create(updatedTeam)
 
         val players = playerService.getAllByIds(updatedTeam.playerIds)
-        return TeamResponse.from(updatedTeam, players)
+        return TeamDetailResponse.from(updatedTeam, players)
     }
 
-    fun removePlayerFromTeam(teamId: UUID, playerId: UUID): TeamResponse? {
+    fun removePlayerFromTeam(teamId: UUID, playerId: UUID): TeamDetailResponse? {
         val team = teamService.get(teamId) ?: return null
         if (!team.hasPlayer(playerId)) return null
 
@@ -172,7 +171,7 @@ class TeamFacade(
         teamService.create(updatedTeam)
 
         val players = playerService.getAllByIds(updatedTeam.playerIds)
-        return TeamResponse.from(updatedTeam, players)
+        return TeamDetailResponse.from(updatedTeam, players)
     }
 
     fun uploadPhoto(teamId: UUID, file: MultipartFile): PhotoUrlResponse? {

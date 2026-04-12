@@ -6,8 +6,8 @@ import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
+import com.github.mihanizzm.ultistats.dto.response.PlayerDetailResponse
 import com.github.mihanizzm.ultistats.dto.response.PlayerListItemResponse
-import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -34,8 +34,11 @@ class PlayerFacade(
         )
     }
 
-    fun getAll(): List<PlayerResponse> =
-        playerService.getAll().map { PlayerResponse.from(it) }
+    fun getAll(): List<PlayerDetailResponse> =
+        playerService.getAll().map { player ->
+            val team = player.teamId?.let { teamService.get(it) }
+            PlayerDetailResponse.from(player, team)
+        }
 
     fun getAllPaged(
         page: Int,
@@ -59,12 +62,13 @@ class PlayerFacade(
         return PageResponse.of(content, totalElements, page, size)
     }
 
-    fun getById(id: UUID): PlayerResponse? {
+    fun getById(id: UUID): PlayerDetailResponse? {
         val player = playerService.get(id) ?: return null
-        return PlayerResponse.from(player)
+        val team = player.teamId?.let { teamService.get(it) }
+        return PlayerDetailResponse.from(player, team)
     }
 
-    fun create(request: CreatePlayerRequest): PlayerResponse {
+    fun create(request: CreatePlayerRequest): PlayerDetailResponse {
         val playerId = UUID.randomUUID()
         val player = Player(
             id = playerId,
@@ -83,10 +87,11 @@ class PlayerFacade(
             }
         }
 
-        return PlayerResponse.from(player)
+        val team = request.teamId?.let { teamService.get(it) }
+        return PlayerDetailResponse.from(player, team)
     }
 
-    fun update(id: UUID, request: UpdatePlayerRequest): PlayerResponse? {
+    fun update(id: UUID, request: UpdatePlayerRequest): PlayerDetailResponse? {
         val existingPlayer = playerService.get(id) ?: return null
         val oldTeamId = existingPlayer.teamId
         // teamId может быть null в request, что означает "не менять"
@@ -120,7 +125,8 @@ class PlayerFacade(
             }
         }
 
-        return PlayerResponse.from(updatedPlayer)
+        val team = updatedPlayer.teamId?.let { teamService.get(it) }
+        return PlayerDetailResponse.from(updatedPlayer, team)
     }
 
     fun delete(id: UUID): Boolean {
