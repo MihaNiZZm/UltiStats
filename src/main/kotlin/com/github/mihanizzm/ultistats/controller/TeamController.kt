@@ -8,7 +8,6 @@ import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamDetailResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamListItemResponse
-import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -62,12 +61,12 @@ class TeamController(
 
     @PostMapping
     @Operation(summary = "Создать команду")
-    fun create(@RequestBody request: CreateTeamRequest): ResponseEntity<TeamResponse> =
+    fun create(@RequestBody request: CreateTeamRequest): ResponseEntity<TeamDetailResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(teamFacade.create(request))
 
     @PutMapping("/{id}")
     @Operation(summary = "Обновить команду (частичное обновление)")
-    fun update(@PathVariable id: UUID, @RequestBody request: UpdateTeamRequest): ResponseEntity<TeamResponse> =
+    fun update(@PathVariable id: UUID, @RequestBody request: UpdateTeamRequest): ResponseEntity<TeamDetailResponse> =
         teamFacade.update(id, request)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
@@ -84,7 +83,7 @@ class TeamController(
     fun addPlayer(
         @PathVariable teamId: UUID,
         @PathVariable playerId: UUID
-    ): ResponseEntity<TeamResponse> =
+    ): ResponseEntity<TeamDetailResponse> =
         teamFacade.addPlayerToTeam(teamId, playerId)
             ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
             ?: ResponseEntity.notFound().build()
@@ -94,7 +93,7 @@ class TeamController(
     fun removePlayer(
         @PathVariable teamId: UUID,
         @PathVariable playerId: UUID
-    ): ResponseEntity<TeamResponse> =
+    ): ResponseEntity<TeamDetailResponse> =
         teamFacade.removePlayerFromTeam(teamId, playerId)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
