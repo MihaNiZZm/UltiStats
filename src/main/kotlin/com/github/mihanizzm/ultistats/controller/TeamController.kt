@@ -6,6 +6,8 @@ import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
+import com.github.mihanizzm.ultistats.dto.response.TeamDetailResponse
+import com.github.mihanizzm.ultistats.dto.response.TeamListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
 import io.swagger.v3.oas.annotations.Operation
@@ -46,14 +48,14 @@ class TeamController(
         )
         @RequestParam(required = false)
         sort: SortParam?,
-    ): PageResponse<TeamResponse> {
+    ): PageResponse<TeamListItemResponse> {
         val filter = TeamFilterRequest(name = name)
         return teamFacade.getAllPaged(page, size, filter, sort ?: TeamFacade.DEFAULT_SORT)
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить команду по ID")
-    fun getById(@PathVariable id: UUID): ResponseEntity<TeamResponse> =
+    fun getById(@PathVariable id: UUID): ResponseEntity<TeamDetailResponse> =
         teamFacade.getById(id)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
