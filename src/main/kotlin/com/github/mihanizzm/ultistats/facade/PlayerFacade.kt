@@ -82,8 +82,7 @@ class PlayerFacade(
         request.teamId?.let { teamId ->
             teamService.get(teamId)?.let { team ->
                 val updatedTeam = team.copy(playerIds = team.playerIds + playerId)
-                teamService.delete(teamId)
-                teamService.create(updatedTeam)
+                teamService.update(updatedTeam)
             }
         }
 
@@ -112,15 +111,13 @@ class PlayerFacade(
             oldTeamId?.let { oldId ->
                 teamService.get(oldId)?.let { oldTeam ->
                     val updated = oldTeam.copy(playerIds = oldTeam.playerIds - id)
-                    teamService.delete(oldId)
-                    teamService.create(updated)
+                    teamService.update(updated)
                 }
             }
             newTeamId?.let { newId ->
                 teamService.get(newId)?.let { newTeam ->
                     val updated = newTeam.copy(playerIds = newTeam.playerIds + id)
-                    teamService.delete(newId)
-                    teamService.create(updated)
+                    teamService.update(updated)
                 }
             }
         }
@@ -135,8 +132,7 @@ class PlayerFacade(
         player.teamId?.let { teamId ->
             teamService.get(teamId)?.let { team ->
                 val updatedTeam = team.copy(playerIds = team.playerIds - id)
-                teamService.delete(teamId)
-                teamService.create(updatedTeam)
+                teamService.update(updatedTeam)
             }
         }
 

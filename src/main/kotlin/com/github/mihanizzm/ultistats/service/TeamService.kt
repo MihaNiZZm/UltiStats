@@ -9,6 +9,8 @@ interface TeamService {
 
     fun create(team: Team)
 
+    fun update(team: Team)
+
     fun delete(teamId: UUID)
 
     fun getAll(): List<Team>
