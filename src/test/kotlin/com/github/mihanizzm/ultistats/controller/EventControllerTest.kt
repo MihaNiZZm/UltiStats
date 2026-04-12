@@ -284,6 +284,7 @@ class EventControllerTest {
             id = UUID.randomUUID(),
             teamIds = listOf(team1.id, team2.id),
         )
+        match.initTeamScores()
         matchService.create(match)
         return match
     }

@@ -8,6 +8,7 @@ data class Player(
     val number: Int?,
     val firstName: String,
     val lastName: String,
+    val photoUrl: String? = null,
 ) {
     companion object {
         fun unknown(teamId: UUID) = Player(

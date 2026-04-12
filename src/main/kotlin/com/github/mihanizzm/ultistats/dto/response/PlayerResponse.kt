@@ -9,6 +9,7 @@ data class PlayerResponse(
     val number: Int?,
     val firstName: String,
     val lastName: String,
+    val photoUrl: String?,
 ) {
     companion object {
         fun from(player: Player) = PlayerResponse(
@@ -17,6 +18,7 @@ data class PlayerResponse(
             number = player.number,
             firstName = player.firstName,
             lastName = player.lastName,
+            photoUrl = player.photoUrl,
         )
     }
 }
