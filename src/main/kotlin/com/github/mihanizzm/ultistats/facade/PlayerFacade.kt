@@ -5,18 +5,22 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
+import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.model.Player
+import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 @Component
 class PlayerFacade(
     private val playerService: PlayerService,
     private val teamService: TeamService,
+    private val localFileStorageService: LocalFileStorageService,
 ) {
     companion object {
         val DEFAULT_SORT = SortParam("lastName")
@@ -128,5 +132,27 @@ class PlayerFacade(
 
         playerService.delete(id)
         return true
+    }
+
+    fun uploadPhoto(playerId: UUID, file: MultipartFile): PhotoUrlResponse? {
+        val player = playerService.get(playerId) ?: return null
+        val url = localFileStorageService.upload(file) ?: return null
+
+        val updatedPlayer = player.copy(photoUrl = url)
+        playerService.update(updatedPlayer)
+        return PhotoUrlResponse(url)
+    }
+
+    fun getPhotoUrl(playerId: UUID): PhotoUrlResponse? {
+        val url = playerService.get(playerId)?.photoUrl ?: return null
+        return PhotoUrlResponse(url)
+    }
+
+    fun deletePhotoUrl(playerId: UUID): PhotoUrlResponse? {
+        val player = playerService.get(playerId) ?: return null
+        val url = player.photoUrl ?: return PhotoUrlResponse(null)
+        val updatedPlayer = player.copy(photoUrl = null)
+        playerService.update(updatedPlayer)
+        return PhotoUrlResponse(url)
     }
 }

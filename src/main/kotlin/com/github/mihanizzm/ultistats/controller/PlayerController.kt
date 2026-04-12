@@ -5,14 +5,17 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
+import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.facade.PlayerFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 @RestController
@@ -78,4 +81,28 @@ class PlayerController(
     fun delete(@PathVariable id: UUID): ResponseEntity<Unit> =
         if (playerFacade.delete(id)) ResponseEntity.noContent().build()
         else ResponseEntity.notFound().build()
+
+    @PostMapping("/{playerId}/uploadPhoto", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @Operation(summary = "Загрузить аватар для игрока")
+    fun uploadPhoto(
+        @PathVariable playerId: UUID,
+        @RequestBody multipartFile: MultipartFile,
+    ): ResponseEntity<PhotoUrlResponse> =
+        playerFacade.uploadPhoto(playerId, multipartFile)
+            ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @GetMapping("/{playerId}/photoUrl")
+    @Operation(summary = "Получить URL изображения игрока")
+    fun getPhotoUrl(@PathVariable playerId: UUID): ResponseEntity<PhotoUrlResponse> =
+        playerFacade.getPhotoUrl(playerId)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @DeleteMapping("/{playerId}/photoUrl")
+    @Operation(summary = "Удалить URL изображения игрока")
+    fun removePhotoUrl(@PathVariable playerId: UUID): ResponseEntity<PhotoUrlResponse> =
+        playerFacade.deletePhotoUrl(playerId)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
 }
