@@ -6,6 +6,7 @@ import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
+import com.github.mihanizzm.ultistats.dto.response.MatchListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.facade.MatchFacade
 import com.github.mihanizzm.ultistats.model.MatchStatus
@@ -59,7 +60,7 @@ class MatchController(
         )
         @RequestParam(required = false)
         sort: SortParam?,
-    ): PageResponse<MatchResponse> {
+    ): PageResponse<MatchListItemResponse> {
         val filter = MatchFilterRequest(
             teamId = teamId,
             status = status,

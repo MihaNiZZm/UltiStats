@@ -6,6 +6,8 @@ import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
+import com.github.mihanizzm.ultistats.dto.response.TeamDetailResponse
+import com.github.mihanizzm.ultistats.dto.response.TeamListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamResponse
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
@@ -41,7 +43,7 @@ class TeamFacade(
         size: Int,
         filter: TeamFilterRequest,
         sortParam: SortParam = DEFAULT_SORT,
-    ): PageResponse<TeamResponse> {
+    ): PageResponse<TeamListItemResponse> {
         val filteredTeams = teamService.findAllFiltered(filter)
         val totalElements = filteredTeams.size.toLong()
 
@@ -50,18 +52,15 @@ class TeamFacade(
         val content = sortedTeams
             .drop(page * size)
             .take(size)
-            .map { team ->
-                val players = playerService.getAllByIds(team.playerIds)
-                TeamResponse.from(team, players)
-            }
+            .map { TeamListItemResponse.from(it) }
 
         return PageResponse.of(content, totalElements, page, size)
     }
 
-    fun getById(id: UUID): TeamResponse? {
+    fun getById(id: UUID): TeamDetailResponse? {
         val team = teamService.get(id) ?: return null
         val players = playerService.getAllByIds(team.playerIds)
-        return TeamResponse.from(team, players)
+        return TeamDetailResponse.from(team, players)
     }
 
     fun create(request: CreateTeamRequest): TeamResponse {

@@ -6,6 +6,7 @@ import com.github.mihanizzm.ultistats.dto.request.CreateMatchRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.MatchTimestampRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
+import com.github.mihanizzm.ultistats.dto.response.MatchListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.service.MatchService
@@ -41,7 +42,7 @@ class MatchFacade(
         size: Int,
         filter: MatchFilterRequest,
         sortParam: SortParam = DEFAULT_SORT,
-    ): PageResponse<MatchResponse> {
+    ): PageResponse<MatchListItemResponse> {
         val filteredMatches = matchService.findAllFiltered(filter)
         val totalElements = filteredMatches.size.toLong()
 
@@ -52,7 +53,7 @@ class MatchFacade(
             .take(size)
             .map { match ->
                 val teams = teamService.getAllInList(match.teamIds)
-                MatchResponse.from(match, teams.associateBy { it.id })
+                MatchListItemResponse.from(match, teams.associateBy { it.id })
             }
 
         return PageResponse.of(content, totalElements, page, size)
