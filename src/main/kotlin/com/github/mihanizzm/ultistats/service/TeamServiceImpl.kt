@@ -17,6 +17,8 @@ class TeamServiceImpl(
 
     override fun create(team: Team) = teamRepository.save(team)
 
+    override fun update(team: Team) = teamRepository.save(team)
+
     override fun delete(teamId: UUID) = teamRepository.delete(teamId)
 
     override fun getAll(): List<Team> = teamRepository.getAll()

@@ -23,6 +23,8 @@ class MatchServiceImpl(
 
     override fun create(match: Match) = matchRepository.save(match)
 
+    override fun update(match: Match) = matchRepository.save(match)
+
     override fun delete(matchId: UUID) = matchRepository.delete(matchId)
 
     override fun getAll(): List<Match> = matchRepository.getAll()

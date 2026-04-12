@@ -110,8 +110,7 @@ class TeamFacade(
             playerIds = newPlayerIds,
             city = request.city ?: existingTeam.city,
         )
-        teamService.delete(id)
-        teamService.create(updatedTeam)
+        teamService.update(updatedTeam)
 
         val players = playerService.getAllByIds(newPlayerIds)
         return TeamResponse.from(updatedTeam, players)
@@ -143,8 +142,7 @@ class TeamFacade(
             if (oldTeamId != teamId) {
                 teamService.get(oldTeamId)?.let { oldTeam ->
                     val updatedOldTeam = oldTeam.copy(playerIds = oldTeam.playerIds - playerId)
-                    teamService.delete(oldTeamId)
-                    teamService.create(updatedOldTeam)
+                    teamService.update(updatedOldTeam)
                 }
             }
         }
@@ -152,8 +150,7 @@ class TeamFacade(
         playerService.update(player.copy(teamId = teamId))
 
         val updatedTeam = team.copy(playerIds = team.playerIds + playerId)
-        teamService.delete(teamId)
-        teamService.create(updatedTeam)
+        teamService.update(updatedTeam)
 
         val players = playerService.getAllByIds(updatedTeam.playerIds)
         return TeamResponse.from(updatedTeam, players)
@@ -168,8 +165,7 @@ class TeamFacade(
         }
 
         val updatedTeam = team.copy(playerIds = team.playerIds - playerId)
-        teamService.delete(teamId)
-        teamService.create(updatedTeam)
+        teamService.update(updatedTeam)
 
         val players = playerService.getAllByIds(updatedTeam.playerIds)
         return TeamResponse.from(updatedTeam, players)
@@ -180,8 +176,7 @@ class TeamFacade(
         val url = localFileStorageService.upload(file) ?: return null
 
         val newTeam = team.copy(photoUrl = url)
-        teamService.delete(team.id)
-        teamService.create(newTeam)
+        teamService.update(newTeam)
         return PhotoUrlResponse(url)
     }
 
@@ -194,8 +189,7 @@ class TeamFacade(
         val team = teamService.get(teamId) ?: return null
         val url = team.photoUrl ?: return PhotoUrlResponse(null)
         val newTeam = team.copy(photoUrl = null)
-        teamService.delete(team.id)
-        teamService.create(newTeam)
+        teamService.update(newTeam)
         return PhotoUrlResponse(url)
     }
 }

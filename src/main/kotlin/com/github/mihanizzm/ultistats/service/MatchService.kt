@@ -12,6 +12,8 @@ interface MatchService {
 
     fun create(match: Match)
 
+    fun update(match: Match)
+
     fun delete(matchId: UUID)
 
     fun getAll(): List<Match>

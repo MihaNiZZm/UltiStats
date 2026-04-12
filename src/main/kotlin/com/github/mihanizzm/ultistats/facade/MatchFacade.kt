@@ -94,8 +94,7 @@ class MatchFacade(
             teamIds = newTeamIds,
             plannedStartTimestamp = request.plannedStartTimestamp ?: existingMatch.plannedStartTimestamp,
         )
-        matchService.delete(id)
-        matchService.create(updatedMatch)
+        matchService.update(updatedMatch)
         return MatchResponse.from(updatedMatch, teamsById)
     }
 
