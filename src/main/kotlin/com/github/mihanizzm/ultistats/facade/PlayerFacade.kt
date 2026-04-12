@@ -6,6 +6,7 @@ import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
+import com.github.mihanizzm.ultistats.dto.response.PlayerListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
@@ -41,7 +42,7 @@ class PlayerFacade(
         size: Int,
         filter: PlayerFilterRequest,
         sortParam: SortParam = DEFAULT_SORT,
-    ): PageResponse<PlayerResponse> {
+    ): PageResponse<PlayerListItemResponse> {
         val filteredPlayers = playerService.findAllFiltered(filter)
         val totalElements = filteredPlayers.size.toLong()
 
@@ -50,7 +51,10 @@ class PlayerFacade(
         val content = sortedPlayers
             .drop(page * size)
             .take(size)
-            .map { PlayerResponse.from(it) }
+            .map { player ->
+                val team = player.teamId?.let { teamService.get(it) }
+                PlayerListItemResponse.from(player, team)
+            }
 
         return PageResponse.of(content, totalElements, page, size)
     }

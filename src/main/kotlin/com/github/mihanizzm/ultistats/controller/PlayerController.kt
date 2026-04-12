@@ -6,6 +6,7 @@ import com.github.mihanizzm.ultistats.dto.request.CreatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.request.PlayerFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdatePlayerRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
+import com.github.mihanizzm.ultistats.dto.response.PlayerListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.PlayerResponse
 import com.github.mihanizzm.ultistats.facade.PlayerFacade
 import io.swagger.v3.oas.annotations.Operation
@@ -51,7 +52,7 @@ class PlayerController(
         )
         @RequestParam(required = false)
         sort: SortParam?,
-    ): PageResponse<PlayerResponse> {
+    ): PageResponse<PlayerListItemResponse> {
         val filter = PlayerFilterRequest(name = name, teamId = teamId)
         return playerFacade.getAllPaged(page, size, filter, sort ?: PlayerFacade.DEFAULT_SORT)
     }

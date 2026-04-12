@@ -214,6 +214,51 @@ class PlayerControllerTest {
     }
 
     @Test
+    fun `Список игроков содержит название команды`() {
+        val team = createTestTeam("Команда Альфа")
+        val player = createTestPlayer("Иван", "Иванов", team.id)
+        teamService.delete(team.id)
+        teamService.create(team.copy(playerIds = listOf(player.id)))
+
+        mockMvc.perform(get("/api/v1/players"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].teamName").value("Команда Альфа"))
+            .andExpect(jsonPath("$.content[0].firstName").value("Иван"))
+            .andExpect(jsonPath("$.content[0].lastName").value("Иванов"))
+    }
+
+    @Test
+    fun `Список игроков содержит null для teamName у игрока без команды`() {
+        createTestPlayer("Иван", "Иванов", null)
+
+        mockMvc.perform(get("/api/v1/players"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].teamName").doesNotExist())
+            .andExpect(jsonPath("$.content[0].firstName").value("Иван"))
+    }
+
+    @Test
+    fun `Список игроков содержит номер игрока`() {
+        createTestPlayerWithNumber("Иван", "Иванов", 42)
+
+        mockMvc.perform(get("/api/v1/players"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].number").value(42))
+    }
+
+    @Test
+    fun `Список игроков не содержит teamId`() {
+        val team = createTestTeam("Команда")
+        val player = createTestPlayer("Иван", "Иванов", team.id)
+        teamService.delete(team.id)
+        teamService.create(team.copy(playerIds = listOf(player.id)))
+
+        mockMvc.perform(get("/api/v1/players"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].teamId").doesNotExist())
+    }
+
+    @Test
     fun `Частичное обновление игрока (только firstName) работает`() {
         val player = createTestPlayer("Иван", "Иванов")
 
@@ -285,10 +330,10 @@ class PlayerControllerTest {
         return player
     }
 
-    private fun createTestTeam(): Team {
+    private fun createTestTeam(name: String = "Test Team"): Team {
         val team = Team(
             id = UUID.randomUUID(),
-            name = "Test Team",
+            name = name,
             playerIds = emptyList(),
         )
         teamService.create(team)
