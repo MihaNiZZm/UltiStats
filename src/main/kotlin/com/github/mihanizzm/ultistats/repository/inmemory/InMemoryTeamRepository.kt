@@ -1,14 +1,16 @@
-package com.github.mihanizzm.ultistats.service
+package com.github.mihanizzm.ultistats.repository.inmemory
 
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.model.Team
-import org.springframework.stereotype.Service
+import com.github.mihanizzm.ultistats.service.TeamRepository
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Repository
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-@Service
-@Suppress("unused")
-class TeamRepositoryConcurrentMapImpl : TeamRepository {
+@Repository
+@Profile("inmemory", "default")
+class InMemoryTeamRepository : TeamRepository {
     private val teams = ConcurrentHashMap<UUID, Team>()
 
     override fun get(id: UUID): Team? = teams[id]

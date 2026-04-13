@@ -5,21 +5,47 @@
 
 ---
 
-## Быстрый старт (Docker)
+## Быстрый старт
 
-Самый простой способ запустить приложение — через Docker:
+### Вариант 1: In-memory (без БД)
+
+Самый быстрый способ для разработки и демо — данные хранятся в памяти:
 
 ```bash
 # Клонировать репозиторий
 git clone https://github.com/UltiStatsDev/ultistats-backend.git
 cd ultistats-backend
 
-# Запустить через docker-compose
+# Запустить
+./gradlew bootRun
+```
+
+### Вариант 2: С PostgreSQL
+
+Для продакшн-подобного окружения с персистентным хранилищем:
+
+```bash
+# Запустить PostgreSQL
+docker run -d --name ultistats-postgres \
+  -e POSTGRES_DB=ultistats \
+  -e POSTGRES_USER=ultistats \
+  -e POSTGRES_PASSWORD=ultistats \
+  -p 5432:5432 \
+  -v ultistats_postgres_data:/var/lib/postgresql/data \
+  postgres:16-alpine
+
+# Запустить приложение с профилем postgres
+./gradlew bootRun --args='--spring.profiles.active=postgres'
+```
+
+### Вариант 3: Docker Compose (всё вместе)
+
+```bash
+# In-memory режим (по умолчанию)
 docker-compose up -d
 
-# Или собрать и запустить вручную
-docker build -t ultistats .
-docker run -p 8080:8080 ultistats
+# С PostgreSQL
+SPRING_PROFILES_ACTIVE=postgres docker-compose up -d
 ```
 
 После запуска:
@@ -29,7 +55,43 @@ docker run -p 8080:8080 ultistats
 Остановка:
 ```bash
 docker-compose down
+# Или остановить только postgres контейнер
+docker stop ultistats-postgres
 ```
+
+---
+
+## Профили приложения
+
+Приложение поддерживает два профиля для разных сценариев использования:
+
+| Профиль | Хранилище | Описание |
+|---------|-----------|----------|
+| `default` / `inmemory` | In-memory (ConcurrentHashMap) | Быстрый старт, данные теряются при перезапуске |
+| `postgres` | PostgreSQL | Персистентное хранение, миграции через Flyway |
+
+### Переключение профилей
+
+**Через аргументы:**
+```bash
+./gradlew bootRun --args='--spring.profiles.active=postgres'
+```
+
+**Через переменную окружения:**
+```bash
+export SPRING_PROFILES_ACTIVE=postgres
+./gradlew bootRun
+```
+
+### Настройка PostgreSQL
+
+При использовании профиля `postgres` можно настроить подключение через переменные окружения:
+
+| Переменная | По умолчанию | Описание |
+|------------|--------------|----------|
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/ultistats` | JDBC URL |
+| `DATABASE_USERNAME` | `ultistats` | Имя пользователя |
+| `DATABASE_PASSWORD` | `ultistats` | Пароль |
 
 ---
 
@@ -62,10 +124,12 @@ docker-compose down
 
 ## Технологический стек
 
-- **Backend:** Kotlin, Spring Boot, Gradle
+- **Backend:** Kotlin, Spring Boot 3, Gradle
+- **Persistence:** Spring Data JPA, PostgreSQL, Flyway (миграции)
 - **Тесты:** JUnit 5, MockK, AssertJ, SpringMockMvc
 - **Документация API:** springdoc-openapi (Swagger UI)
 - **Логирование:** Logback
+- **Контейнеризация:** Docker, Docker Compose
 - **Frontend:** ReactJS (реализация отдельно)
 - **Форматы обмена:** JSON (основной), в перспективе — CSV для табличных статистик
 

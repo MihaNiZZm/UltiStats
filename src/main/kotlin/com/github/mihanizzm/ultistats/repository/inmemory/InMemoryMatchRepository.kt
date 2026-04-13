@@ -1,14 +1,16 @@
-package com.github.mihanizzm.ultistats.service
+package com.github.mihanizzm.ultistats.repository.inmemory
 
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.model.Match
-import org.springframework.stereotype.Service
+import com.github.mihanizzm.ultistats.service.MatchRepository
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Repository
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-@Service
-@Suppress("unused")
-class MatchRepositoryConcurrentMapImpl : MatchRepository {
+@Repository
+@Profile("inmemory", "default")
+class InMemoryMatchRepository : MatchRepository {
     private val matches = ConcurrentHashMap<UUID, Match>()
 
     override fun get(id: UUID): Match? = matches[id]

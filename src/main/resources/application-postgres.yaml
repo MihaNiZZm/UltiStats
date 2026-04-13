@@ -1,0 +1,23 @@
+spring:
+  # Включаем JPA и Flyway для профиля postgres (убираем exclusions)
+  autoconfigure:
+    exclude: []
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ultistats}
+    username: ${DATABASE_USERNAME:ultistats}
+    password: ${DATABASE_PASSWORD:ultistats}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
