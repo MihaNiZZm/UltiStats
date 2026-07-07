@@ -8,10 +8,14 @@ import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.repository.entity.MatchEntity
 
 class MatchMapper(private val objectMapper: ObjectMapper) {
+    private val eventListType = objectMapper.typeFactory.constructCollectionType(
+        MutableList::class.java,
+        Event::class.java,
+    )
 
     fun toDomain(entity: MatchEntity): Match {
         val events: MutableList<Event> = if (entity.eventsJson.isNotBlank() && entity.eventsJson != "[]") {
-            objectMapper.readValue(entity.eventsJson)
+            objectMapper.readValue(entity.eventsJson, eventListType)
         } else {
             mutableListOf()
         }
@@ -37,7 +41,7 @@ class MatchMapper(private val objectMapper: ObjectMapper) {
     fun toEntity(match: Match): MatchEntity = MatchEntity(
         id = match.id,
         teamIds = match.teamIds.toTypedArray(),
-        eventsJson = objectMapper.writeValueAsString(match.events),
+        eventsJson = objectMapper.writerFor(eventListType).writeValueAsString(match.events),
         teamScoresJson = objectMapper.writeValueAsString(match.teamScores),
         diskHolderId = match.diskHolderId,
         plannedStartTimestamp = match.plannedStartTimestamp,

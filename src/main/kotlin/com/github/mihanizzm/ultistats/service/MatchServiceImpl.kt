@@ -40,6 +40,7 @@ class MatchServiceImpl(
     override fun recalculateDiskHolder(matchId: UUID) {
         val match = getOrThrow(matchId)
         match.diskHolderId = calculateDiskHolder(match.events)
+        update(match)
     }
 
     override fun startMatch(matchId: UUID, timestamp: Instant): Boolean {
@@ -48,6 +49,7 @@ class MatchServiceImpl(
             return false
         }
         match.startedAt = timestamp
+        update(match)
         return true
     }
 
@@ -57,6 +59,7 @@ class MatchServiceImpl(
             return false
         }
         match.endedAt = timestamp
+        update(match)
         return true
     }
 

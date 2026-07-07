@@ -65,12 +65,6 @@ class TeamFacade(
     fun create(request: CreateTeamRequest): TeamDetailResponse {
         val teamId = UUID.randomUUID()
 
-        request.playerIds.forEach { playerId ->
-            playerService.get(playerId)?.let { player ->
-                playerService.update(player.copy(teamId = teamId))
-            }
-        }
-
         val team = Team(
             id = teamId,
             name = request.name,
@@ -78,6 +72,12 @@ class TeamFacade(
             city = request.city,
         )
         teamService.create(team)
+
+        request.playerIds.forEach { playerId ->
+            playerService.get(playerId)?.let { player ->
+                playerService.update(player.copy(teamId = teamId))
+            }
+        }
 
         val players = playerService.getAllByIds(request.playerIds)
         return TeamDetailResponse.from(team, players)

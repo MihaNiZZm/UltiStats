@@ -5,13 +5,11 @@ import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.repository.mapper.toDomain
 import com.github.mihanizzm.ultistats.repository.mapper.toEntity
 import com.github.mihanizzm.ultistats.service.TeamRepository
-import org.springframework.context.annotation.Profile
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-@Profile("postgres")
 class JpaTeamRepositoryAdapter(
     private val springDataTeamRepository: SpringDataTeamRepository,
     private val springDataPlayerRepository: SpringDataPlayerRepository,

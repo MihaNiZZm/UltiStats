@@ -17,6 +17,12 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @BeforeEach
     fun setup() {
         MATCH.events.clear()
+        matchService.update(MATCH)
+    }
+
+    private fun recalculateTestMatchStatistics(): MatchStatistics {
+        matchService.update(MATCH)
+        return statisticsService.recalculateMatchStatistics(MATCH.id)
     }
 
     @Test
@@ -61,7 +67,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -99,7 +105,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -131,7 +137,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -163,7 +169,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -204,7 +210,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -238,7 +244,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -268,7 +274,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -298,7 +304,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -328,7 +334,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -358,7 +364,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val actual = recalculateTestMatchStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }

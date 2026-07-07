@@ -16,6 +16,7 @@ class EventServiceImplTest : MatchAbstractTest() {
     @BeforeEach
     fun setup() {
         MATCH.events.clear()
+        matchService.update(MATCH)
     }
 
     @Test
@@ -24,8 +25,9 @@ class EventServiceImplTest : MatchAbstractTest() {
 
         eventService.create(event, MATCH.id)
 
-        assertEquals(1, MATCH.events.size)
-        assertEquals(event, MATCH.events[0])
+        val match = matchService.getOrThrow(MATCH.id)
+        assertEquals(1, match.events.size)
+        assertEquals(event, match.events[0])
     }
 
     @Test
@@ -36,8 +38,9 @@ class EventServiceImplTest : MatchAbstractTest() {
         eventService.create(event, MATCH.id)
         eventService.edit(0, newEvent, MATCH.id)
 
-        assertEquals(1, MATCH.events.size)
-        assertEquals(newEvent, MATCH.events[0])
+        val match = matchService.getOrThrow(MATCH.id)
+        assertEquals(1, match.events.size)
+        assertEquals(newEvent, match.events[0])
     }
 
     @Test
@@ -54,7 +57,8 @@ class EventServiceImplTest : MatchAbstractTest() {
         eventService.create(event, MATCH.id)
         eventService.remove(0, MATCH.id)
 
-        assertEquals(0, MATCH.events.size)
+        val match = matchService.getOrThrow(MATCH.id)
+        assertEquals(0, match.events.size)
     }
 
     @Test

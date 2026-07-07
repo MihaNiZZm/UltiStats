@@ -1,12 +1,10 @@
 package com.github.mihanizzm.ultistats.repository.jpa
 
 import com.github.mihanizzm.ultistats.repository.entity.TeamEntity
-import org.springframework.context.annotation.Profile
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import java.util.UUID
 
-@Profile("postgres")
 interface SpringDataTeamRepository : JpaRepository<TeamEntity, UUID> {
 
     @Query("SELECT t FROM TeamEntity t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :name, '%'))")

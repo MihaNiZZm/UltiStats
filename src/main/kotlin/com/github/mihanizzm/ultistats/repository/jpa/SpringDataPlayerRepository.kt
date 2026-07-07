@@ -1,12 +1,10 @@
 package com.github.mihanizzm.ultistats.repository.jpa
 
 import com.github.mihanizzm.ultistats.repository.entity.PlayerEntity
-import org.springframework.context.annotation.Profile
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import java.util.UUID
 
-@Profile("postgres")
 interface SpringDataPlayerRepository : JpaRepository<PlayerEntity, UUID> {
 
     fun findAllByTeamId(teamId: UUID): List<PlayerEntity>

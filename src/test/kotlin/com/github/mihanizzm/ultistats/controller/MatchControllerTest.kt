@@ -344,14 +344,13 @@ class MatchControllerTest {
             Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
             Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
         )
-        players.forEach { playerService.create(it) }
-
         val team = Team(
             id = teamId,
             name = name,
             playerIds = players.map { it.id }
         )
         teamService.create(team)
+        players.forEach { playerService.create(it) }
         return team
     }
 }
