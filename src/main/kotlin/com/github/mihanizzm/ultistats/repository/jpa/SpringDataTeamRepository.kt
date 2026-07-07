@@ -1,17 +1,17 @@
 package com.github.mihanizzm.ultistats.repository.jpa
 
-import com.github.mihanizzm.ultistats.repository.entity.TeamEntity
+import com.github.mihanizzm.ultistats.model.Team
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import java.util.UUID
 
-interface SpringDataTeamRepository : JpaRepository<TeamEntity, UUID> {
+interface SpringDataTeamRepository : JpaRepository<Team, UUID> {
 
-    @Query("SELECT t FROM TeamEntity t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-    fun findByNameContainingIgnoreCase(name: String): List<TeamEntity>
+    @Query("SELECT t FROM Team t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    fun findByNameContainingIgnoreCase(name: String): List<Team>
 
-    @Query("SELECT COUNT(t) FROM TeamEntity t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    @Query("SELECT COUNT(t) FROM Team t WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     fun countByNameContainingIgnoreCase(name: String): Long
 
-    fun findAllByIdIn(ids: List<UUID>): List<TeamEntity>
+    fun findAllByIdIn(ids: List<UUID>): List<Team>
 }
