@@ -15,11 +15,14 @@ class DiskHolderTest : MatchAbstractTest() {
     fun setup() {
         MATCH.events.clear()
         MATCH.diskHolderId = null
+        matchService.update(MATCH)
     }
+
+    private fun diskHolder() = matchService.getOrThrow(MATCH.id).diskHolderId
 
     @Test
     fun `В начале матча diskHolder равен null`() {
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -28,7 +31,7 @@ class DiskHolderTest : MatchAbstractTest() {
 
         eventService.create(pickup, MATCH.id)
 
-        assertEquals(PLAYERS_1[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[0].id, diskHolder())
     }
 
     @Test
@@ -39,7 +42,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pickup, MATCH.id)
         eventService.create(pass, MATCH.id)
 
-        assertEquals(PLAYERS_1[1].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[1].id, diskHolder())
     }
 
     @Test
@@ -54,7 +57,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pickup, MATCH.id)
         eventService.create(interception, MATCH.id)
 
-        assertEquals(PLAYERS_2[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_2[0].id, diskHolder())
     }
 
     @Test
@@ -65,7 +68,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pickup, MATCH.id)
         eventService.create(drop, MATCH.id)
 
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -80,7 +83,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pickup, MATCH.id)
         eventService.create(block, MATCH.id)
 
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -95,7 +98,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pickup, MATCH.id)
         eventService.create(block, MATCH.id)
 
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -108,7 +111,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pass, MATCH.id)
         eventService.create(goal, MATCH.id)
 
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -123,7 +126,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(pickup, MATCH.id)
         eventService.create(callahan, MATCH.id)
 
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -132,7 +135,7 @@ class DiskHolderTest : MatchAbstractTest() {
 
         eventService.create(pull, MATCH.id)
 
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -145,7 +148,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(timeoutStart, MATCH.id)
         eventService.create(timeoutEnd, MATCH.id)
 
-        assertEquals(PLAYERS_1[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[0].id, diskHolder())
     }
 
     @Test
@@ -158,7 +161,7 @@ class DiskHolderTest : MatchAbstractTest() {
         eventService.create(halftimeStart, MATCH.id)
         eventService.create(halftimeEnd, MATCH.id)
 
-        assertEquals(PLAYERS_1[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[0].id, diskHolder())
     }
 
     @Test
@@ -168,11 +171,11 @@ class DiskHolderTest : MatchAbstractTest() {
 
         eventService.create(pickup, MATCH.id)
         eventService.create(pass, MATCH.id)
-        assertEquals(PLAYERS_1[1].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[1].id, diskHolder())
 
         eventService.remove(1, MATCH.id)
 
-        assertEquals(PLAYERS_1[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[0].id, diskHolder())
     }
 
     @Test
@@ -183,11 +186,11 @@ class DiskHolderTest : MatchAbstractTest() {
 
         eventService.create(pickup, MATCH.id)
         eventService.create(pass, MATCH.id)
-        assertEquals(PLAYERS_1[1].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[1].id, diskHolder())
 
         eventService.edit(1, newPass, MATCH.id)
 
-        assertEquals(PLAYERS_1[2].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[2].id, diskHolder())
     }
 
     @Test
@@ -199,19 +202,19 @@ class DiskHolderTest : MatchAbstractTest() {
         val goal = TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.GOAL)
 
         eventService.create(pull, MATCH.id)
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
 
         eventService.create(pickup, MATCH.id)
-        assertEquals(PLAYERS_1[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[0].id, diskHolder())
 
         eventService.create(pass1, MATCH.id)
-        assertEquals(PLAYERS_1[1].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[1].id, diskHolder())
 
         eventService.create(pass2, MATCH.id)
-        assertEquals(PLAYERS_1[2].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[2].id, diskHolder())
 
         eventService.create(goal, MATCH.id)
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
     }
 
     @Test
@@ -225,12 +228,12 @@ class DiskHolderTest : MatchAbstractTest() {
         val pickup2 = OnePlayerEvent(PLAYERS_2[1].id, TEAM_2.id, Instant.now(), EventType.TURNOVER)
 
         eventService.create(pickup1, MATCH.id)
-        assertEquals(PLAYERS_1[0].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_1[0].id, diskHolder())
 
         eventService.create(block, MATCH.id)
-        assertNull(MATCH.diskHolderId)
+        assertNull(diskHolder())
 
         eventService.create(pickup2, MATCH.id)
-        assertEquals(PLAYERS_2[1].id, MATCH.diskHolderId)
+        assertEquals(PLAYERS_2[1].id, diskHolder())
     }
 }

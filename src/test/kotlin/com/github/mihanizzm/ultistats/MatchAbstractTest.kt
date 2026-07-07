@@ -152,11 +152,11 @@ abstract class MatchAbstractTest {
         teamService.getAll().forEach { teamService.delete(it.id) }
         playerService.getAll().forEach { playerService.delete(it.id) }
 
-        PLAYERS_1.forEach { playerService.create(it) }
-        PLAYERS_2.forEach { playerService.create(it) }
-
         teamService.create(TEAM_1)
         teamService.create(TEAM_2)
+
+        PLAYERS_1.forEach { playerService.create(it) }
+        PLAYERS_2.forEach { playerService.create(it) }
 
         matchService.create(MATCH)
     }

@@ -19,7 +19,11 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @BeforeEach
     fun setup() {
         MATCH.events.clear()
+        matchService.update(MATCH)
     }
+
+    private fun recalculateTestMatchStatistics() =
+        matchService.update(MATCH).let { statisticsService.recalculateMatchStatistics(MATCH.id) }
 
     @Test
     fun `Владение только у атакующей команды, игроки получают свое время`() {
@@ -29,7 +33,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(25), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(40), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
 
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time
         val team2 = stats.teamStatistics.first { it.teamId == UUIDS[1] }.time
@@ -52,7 +56,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(90), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(100), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
 
         // Матчевая статистика по времени
         assertThat(stats.timeStatistics.timeSpentOnTimeouts).isEqualTo(Duration.ofSeconds(60))
@@ -75,7 +79,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         // Второй пулл делает команда забившая гол (TEAM_2)
         MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(50), EventType.PULL)) // между очками 20 сек
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time
         val team2 = stats.teamStatistics.first { it.teamId == UUIDS[1] }.time
 
@@ -99,7 +103,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], UUIDS[0], UUIDS[0], ts(120), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], UUIDS[0], UUIDS[0], ts(130), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
 
         assertThat(stats.timeStatistics.timeSpentOnHalftime).isEqualTo(Duration.ofSeconds(60))
 
@@ -123,7 +127,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], UUIDS[0], UUIDS[0], ts(150), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], UUIDS[0], UUIDS[0], ts(160), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
 
         assertThat(stats.timeStatistics.timeSpentOnTimeouts).isEqualTo(Duration.ofSeconds(60))
         assertThat(stats.timeStatistics.timeSpentBetweenPoints).isEqualTo(Duration.ofSeconds(30))
@@ -149,7 +153,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         // Следующий пулл (время между поинтами должно считаться только после HALFTIME_END)
         MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(95), EventType.PULL)) // 91..95 = 4 сек
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
 
         assertThat(stats.timeStatistics.timeSpentOnHalftime).isEqualTo(Duration.ofSeconds(60))
         val team2 = stats.teamStatistics.first { it.teamId == UUIDS[1] }.time
@@ -166,7 +170,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[9], UUIDS[10], UUIDS[1], UUIDS[1], ts(35), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[10], UUIDS[11], UUIDS[1], UUIDS[1], ts(50), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
         fun playerTime(idIdx: Int) = stats.playerStatistics.first { it.playerId == UUIDS[idIdx] }.time.totalPossessionTime
 
         assertThat(playerTime(7)).isEqualTo(Duration.ofSeconds(10)) // 5..15
@@ -186,7 +190,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], UUIDS[0], UUIDS[0], ts(50), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], UUIDS[0], UUIDS[0], ts(60), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time
         val team2 = stats.teamStatistics.first { it.teamId == UUIDS[1] }.time
 
@@ -202,7 +206,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(50), EventType.PASS))
         MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(60), EventType.GOAL))
 
-        val stats = statisticsService.recalculateMatchStatistics(MATCH.id)
+        val stats = recalculateTestMatchStatistics()
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time
         val team2 = stats.teamStatistics.first { it.teamId == UUIDS[1] }.time
 

@@ -1,27 +1,25 @@
 package com.github.mihanizzm.ultistats.repository.jpa
 
-import com.github.mihanizzm.ultistats.repository.entity.PlayerEntity
-import org.springframework.context.annotation.Profile
+import com.github.mihanizzm.ultistats.model.Player
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import java.util.UUID
 
-@Profile("postgres")
-interface SpringDataPlayerRepository : JpaRepository<PlayerEntity, UUID> {
+interface SpringDataPlayerRepository : JpaRepository<Player, UUID> {
 
-    fun findAllByTeamId(teamId: UUID): List<PlayerEntity>
+    fun findAllByTeamId(teamId: UUID): List<Player>
 
-    fun findAllByIdIn(ids: List<UUID>): List<PlayerEntity>
+    fun findAllByIdIn(ids: List<UUID>): List<Player>
 
     @Query("""
-        SELECT p FROM PlayerEntity p
+        SELECT p FROM Player p
         WHERE (:teamId IS NULL OR p.teamId = :teamId)
         AND (:name IS NULL OR LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%')))
     """)
-    fun findFiltered(teamId: UUID?, name: String?): List<PlayerEntity>
+    fun findFiltered(teamId: UUID?, name: String?): List<Player>
 
     @Query("""
-        SELECT COUNT(p) FROM PlayerEntity p
+        SELECT COUNT(p) FROM Player p
         WHERE (:teamId IS NULL OR p.teamId = :teamId)
         AND (:name IS NULL OR LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%')))
     """)

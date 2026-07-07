@@ -216,9 +216,7 @@ class PlayerControllerTest {
     @Test
     fun `Список игроков содержит название команды`() {
         val team = createTestTeam("Команда Альфа")
-        val player = createTestPlayer("Иван", "Иванов", team.id)
-        teamService.delete(team.id)
-        teamService.create(team.copy(playerIds = listOf(player.id)))
+        createTestPlayer("Иван", "Иванов", team.id)
 
         mockMvc.perform(get("/api/v1/players"))
             .andExpect(status().isOk)
@@ -249,9 +247,7 @@ class PlayerControllerTest {
     @Test
     fun `Список игроков не содержит teamId`() {
         val team = createTestTeam("Команда")
-        val player = createTestPlayer("Иван", "Иванов", team.id)
-        teamService.delete(team.id)
-        teamService.create(team.copy(playerIds = listOf(player.id)))
+        createTestPlayer("Иван", "Иванов", team.id)
 
         mockMvc.perform(get("/api/v1/players"))
             .andExpect(status().isOk)
