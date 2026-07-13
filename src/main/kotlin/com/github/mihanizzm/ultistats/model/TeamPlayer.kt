@@ -17,7 +17,7 @@ data class TeamPlayerId(
 @Entity
 @Table(name = "team_players")
 @IdClass(TeamPlayerId::class)
-data class TeamPlayer(
+class TeamPlayer(
     @Id
     @Column(name = "team_id")
     val teamId: UUID,

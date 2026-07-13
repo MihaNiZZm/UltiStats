@@ -10,7 +10,7 @@ import java.util.UUID
 
 @Entity
 @Table(name = "teams")
-data class Team(
+class Team(
     @Id
     val id: UUID,
 

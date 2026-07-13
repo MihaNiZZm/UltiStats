@@ -22,7 +22,7 @@ import java.util.UUID
  * stays separate so database-only identity, ordering, and soft-deletion fields do not
  * become part of the event API.
  */
-data class EventEntity(
+class EventEntity(
     @Id
     val id: UUID,
 

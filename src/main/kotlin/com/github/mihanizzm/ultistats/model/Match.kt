@@ -17,7 +17,7 @@ import java.util.UUID
  * Team, roster, score, and event data live in normalized tables and are populated by
  * MatchServiceImpl when it builds a read model.
  */
-data class Match(
+class Match(
     @Id
     val id: UUID,
 
