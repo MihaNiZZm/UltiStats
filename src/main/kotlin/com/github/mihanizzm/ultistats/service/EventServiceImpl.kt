@@ -1,64 +1,56 @@
 package com.github.mihanizzm.ultistats.service
 
-import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.model.EventEntity
 import com.github.mihanizzm.ultistats.model.events.Event
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchPlayerRepository
+import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import java.time.Instant
 import java.util.UUID
 
 @Service
-@Suppress("unused")
 class EventServiceImpl(
+    private val eventRepository: SpringDataEventRepository,
+    private val matchPlayerRepository: SpringDataMatchPlayerRepository,
     private val matchService: MatchService,
 ) : EventService {
-    /**
-     * Создать новое событие.
-     */
-    override fun create(event: Event, matchId: UUID): UUID? {
-        val match = matchService.getOrThrow(matchId)
-        match.events.add(event)
-        match.recalculateTeamScores()
-        matchService.update(match)
-        matchService.recalculateDiskHolder(matchId)
-        return matchService.getOrThrow(matchId).diskHolderId
+    @Transactional
+    override fun create(event: Event, matchId: UUID): UUID {
+        matchService.getOrThrow(matchId)
+        val sequenceNumber = (eventRepository.findFirstByMatchIdOrderBySequenceNumberDesc(matchId)
+            ?.sequenceNumber ?: 0) + 1
+        val entity = EventEntity.fromDomain(UUID.randomUUID(), matchId, sequenceNumber, event)
+        eventRepository.save(entity)
+        matchService.recalculateScore(matchId)
+        return entity.id
     }
 
-    /**
-     * Изменить существующее событие по выбранному индексу.
-     */
-    override fun edit(index: Int, event: Event, matchId: UUID): UUID? {
-        val match = matchService.getOrThrow(matchId)
-        checkEventExistence(index, match)
-        match.events[index] = event
-        match.recalculateTeamScores()
-        matchService.update(match)
-        matchService.recalculateDiskHolder(matchId)
-        return matchService.getOrThrow(matchId).diskHolderId
+    @Transactional
+    override fun edit(index: Int, event: Event, matchId: UUID): UUID {
+        val existing = getEntities(matchId).getOrNull(index)
+            ?: throw IllegalArgumentException("Event index $index does not exist")
+        eventRepository.save(EventEntity.fromDomain(existing.id, matchId, existing.sequenceNumber, event))
+        matchService.recalculateScore(matchId)
+        return existing.id
     }
 
-    /**
-     * Удалить выбранное событие в матче по индексу.
-     */
-    override fun remove(index: Int, matchId: UUID): UUID? {
-        val match = matchService.getOrThrow(matchId)
-        checkEventExistence(index, match)
-        match.events.removeAt(index)
-        match.recalculateTeamScores()
-        matchService.update(match)
-        matchService.recalculateDiskHolder(matchId)
-        return matchService.getOrThrow(matchId).diskHolderId
+    @Transactional
+    override fun remove(index: Int, matchId: UUID): UUID {
+        val existing = getEntities(matchId).getOrNull(index)
+            ?: throw IllegalArgumentException("Event index $index does not exist")
+        eventRepository.save(existing.copy(deletedAt = Instant.now()))
+        matchService.recalculateScore(matchId)
+        return existing.id
     }
 
-    /**
-     * Получить все события выбранного матча.
-     */
     override fun getAllEventsOfMatch(matchId: UUID): List<Event> {
-        val match = matchService.getOrThrow(matchId)
-        return match.events
+        matchService.getOrThrow(matchId)
+        val teamByPlayerId = matchPlayerRepository.findAllByMatchId(matchId)
+            .associate { it.playerId to it.teamId }
+        return getEntities(matchId).map { it.toDomain(teamByPlayerId) }
     }
 
-    private fun checkEventExistence(index: Int, match: Match) {
-        if (index >= match.events.size) {
-            throw IllegalArgumentException("Index $index is out of bounds for events of size ${match.events.size}")
-        }
-    }
+    private fun getEntities(matchId: UUID): List<EventEntity> =
+        eventRepository.findAllByMatchIdAndDeletedAtIsNullOrderBySequenceNumber(matchId)
 }

@@ -22,8 +22,11 @@ class TimeStatisticsTest : MatchAbstractTest() {
         matchService.update(MATCH)
     }
 
-    private fun recalculateTestMatchStatistics() =
-        matchService.update(MATCH).let { statisticsService.recalculateMatchStatistics(MATCH.id) }
+    private fun recalculateTestMatchStatistics(): com.github.mihanizzm.ultistats.model.statistics.MatchStatistics {
+        MATCH.events.toList().forEach { eventService.create(it, MATCH.id) }
+        MATCH.events.clear()
+        return statisticsService.recalculateMatchStatistics(MATCH.id)
+    }
 
     @Test
     fun `Владение только у атакующей команды, игроки получают свое время`() {

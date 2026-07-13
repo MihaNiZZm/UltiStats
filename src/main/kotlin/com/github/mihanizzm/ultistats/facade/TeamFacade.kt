@@ -12,6 +12,7 @@ import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
@@ -21,6 +22,7 @@ import java.util.UUID
 class TeamFacade(
     private val teamService: TeamService,
     private val playerService: PlayerService,
+    private val teamPlayerService: TeamPlayerService,
     private val localFileStorageService: LocalFileStorageService,
 ) {
     companion object {
@@ -33,7 +35,7 @@ class TeamFacade(
 
     fun getAll(): List<TeamDetailResponse> =
         teamService.getAll().map { team ->
-            val players = playerService.getAllByIds(team.playerIds)
+            val players = playerService.getAllByTeamId(team.id)
             TeamDetailResponse.from(team, players)
         }
 
@@ -58,7 +60,7 @@ class TeamFacade(
 
     fun getById(id: UUID): TeamDetailResponse? {
         val team = teamService.get(id) ?: return null
-        val players = playerService.getAllByIds(team.playerIds)
+        val players = playerService.getAllByTeamId(team.id)
         return TeamDetailResponse.from(team, players)
     }
 
@@ -74,12 +76,10 @@ class TeamFacade(
         teamService.create(team)
 
         request.playerIds.forEach { playerId ->
-            playerService.get(playerId)?.let { player ->
-                playerService.update(player.copy(teamId = teamId))
-            }
+            playerService.get(playerId)?.let { teamPlayerService.add(teamId, playerId) }
         }
 
-        val players = playerService.getAllByIds(request.playerIds)
+        val players = playerService.getAllByTeamId(teamId)
         return TeamDetailResponse.from(team, players)
     }
 
@@ -92,16 +92,12 @@ class TeamFacade(
 
         // Убираем teamId у игроков, которые были удалены из команды
         (oldPlayerIds - newPlayerIds).forEach { playerId ->
-            playerService.get(playerId)?.let { player ->
-                playerService.update(player.copy(teamId = null))
-            }
+            teamPlayerService.remove(id, playerId)
         }
 
         // Добавляем teamId у новых игроков
         (newPlayerIds - oldPlayerIds).forEach { playerId ->
-            playerService.get(playerId)?.let { player ->
-                playerService.update(player.copy(teamId = id))
-            }
+            playerService.get(playerId)?.let { teamPlayerService.add(id, playerId) }
         }
 
         val updatedTeam = existingTeam.copy(
@@ -111,7 +107,7 @@ class TeamFacade(
         )
         teamService.update(updatedTeam)
 
-        val players = playerService.getAllByIds(newPlayerIds)
+        val players = playerService.getAllByTeamId(id)
         return TeamDetailResponse.from(updatedTeam, players)
     }
 
@@ -119,39 +115,27 @@ class TeamFacade(
         val team = teamService.get(id) ?: return false
 
         team.playerIds.forEach { playerId ->
-            playerService.get(playerId)?.let { player ->
-                playerService.update(player.copy(teamId = null))
-            }
+            teamPlayerService.remove(id, playerId)
         }
 
         teamService.delete(id)
         return true
     }
 
-    fun addPlayerToTeam(teamId: UUID, playerId: UUID): TeamDetailResponse? {
+    fun addPlayerToTeam(teamId: UUID, playerId: UUID, number: Int? = null): TeamDetailResponse? {
         val team = teamService.get(teamId) ?: return null
         val player = playerService.get(playerId) ?: return null
 
         if (team.hasPlayer(playerId)) {
-            val players = playerService.getAllByIds(team.playerIds)
+            if (number != null) teamPlayerService.add(teamId, playerId, number)
+            val players = playerService.getAllByTeamId(teamId)
             return TeamDetailResponse.from(team, players)
         }
 
-        player.teamId?.let { oldTeamId ->
-            if (oldTeamId != teamId) {
-                teamService.get(oldTeamId)?.let { oldTeam ->
-                    val updatedOldTeam = oldTeam.copy(playerIds = oldTeam.playerIds - playerId)
-                    teamService.update(updatedOldTeam)
-                }
-            }
-        }
-
-        playerService.update(player.copy(teamId = teamId))
-
+        teamPlayerService.add(teamId, player.id, number)
         val updatedTeam = team.copy(playerIds = team.playerIds + playerId)
-        teamService.update(updatedTeam)
 
-        val players = playerService.getAllByIds(updatedTeam.playerIds)
+        val players = playerService.getAllByTeamId(teamId)
         return TeamDetailResponse.from(updatedTeam, players)
     }
 
@@ -159,14 +143,10 @@ class TeamFacade(
         val team = teamService.get(teamId) ?: return null
         if (!team.hasPlayer(playerId)) return null
 
-        playerService.get(playerId)?.let { player ->
-            playerService.update(player.copy(teamId = null))
-        }
-
+        teamPlayerService.remove(teamId, playerId)
         val updatedTeam = team.copy(playerIds = team.playerIds - playerId)
-        teamService.update(updatedTeam)
 
-        val players = playerService.getAllByIds(updatedTeam.playerIds)
+        val players = playerService.getAllByTeamId(teamId)
         return TeamDetailResponse.from(updatedTeam, players)
     }
 

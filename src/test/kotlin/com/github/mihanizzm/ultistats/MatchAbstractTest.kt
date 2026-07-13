@@ -143,7 +143,7 @@ abstract class MatchAbstractTest {
             UUIDS[12],
             listOf(TEAM_1.id, TEAM_2.id),
             mutableListOf<Event>(),
-        ).apply { initTeamScores() }
+        )
     }
 
     @BeforeEach

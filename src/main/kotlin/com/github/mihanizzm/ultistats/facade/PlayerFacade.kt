@@ -12,6 +12,7 @@ import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
@@ -21,6 +22,7 @@ import java.util.UUID
 class PlayerFacade(
     private val playerService: PlayerService,
     private val teamService: TeamService,
+    private val teamPlayerService: TeamPlayerService,
     private val localFileStorageService: LocalFileStorageService,
 ) {
     companion object {
@@ -80,10 +82,7 @@ class PlayerFacade(
         playerService.create(player)
 
         request.teamId?.let { teamId ->
-            teamService.get(teamId)?.let { team ->
-                val updatedTeam = team.copy(playerIds = team.playerIds + playerId)
-                teamService.update(updatedTeam)
-            }
+            teamService.get(teamId)?.let { teamPlayerService.add(teamId, playerId, request.number) }
         }
 
         val team = request.teamId?.let { teamService.get(it) }
@@ -99,42 +98,32 @@ class PlayerFacade(
         val newTeamId = request.teamId
 
         val updatedPlayer = existingPlayer.copy(
-            number = request.number ?: existingPlayer.number,
             firstName = request.firstName ?: existingPlayer.firstName,
             lastName = request.lastName ?: existingPlayer.lastName,
-            teamId = if (shouldUpdateTeam) newTeamId else existingPlayer.teamId,
         )
         playerService.update(updatedPlayer)
 
         // Обновляем связи с командами только если teamId был явно передан
         if (shouldUpdateTeam && oldTeamId != newTeamId) {
             oldTeamId?.let { oldId ->
-                teamService.get(oldId)?.let { oldTeam ->
-                    val updated = oldTeam.copy(playerIds = oldTeam.playerIds - id)
-                    teamService.update(updated)
-                }
+                teamPlayerService.remove(oldId, id)
             }
             newTeamId?.let { newId ->
-                teamService.get(newId)?.let { newTeam ->
-                    val updated = newTeam.copy(playerIds = newTeam.playerIds + id)
-                    teamService.update(updated)
-                }
+                teamService.get(newId)?.let { teamPlayerService.add(newId, id, request.number) }
             }
+        } else if (request.number != null && oldTeamId != null) {
+            teamPlayerService.add(oldTeamId, id, request.number)
         }
 
-        val team = updatedPlayer.teamId?.let { teamService.get(it) }
-        return PlayerDetailResponse.from(updatedPlayer, team)
+        val persisted = playerService.get(id) ?: updatedPlayer
+        val team = persisted.teamId?.let { teamService.get(it) }
+        return PlayerDetailResponse.from(persisted, team)
     }
 
     fun delete(id: UUID): Boolean {
-        val player = playerService.get(id) ?: return false
+        if (playerService.get(id) == null) return false
 
-        player.teamId?.let { teamId ->
-            teamService.get(teamId)?.let { team ->
-                val updatedTeam = team.copy(playerIds = team.playerIds - id)
-                teamService.update(updatedTeam)
-            }
-        }
+        teamPlayerService.getByPlayerId(id).forEach { teamPlayerService.remove(it.teamId, id) }
 
         playerService.delete(id)
         return true

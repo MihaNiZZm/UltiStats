@@ -8,10 +8,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
 
 @Suppress("NonAsciiCharacters")
 class EventServiceImplTest : MatchAbstractTest() {
+
+    private fun now() = Instant.now().truncatedTo(ChronoUnit.MICROS)
 
     @BeforeEach
     fun setup() {
@@ -21,7 +24,7 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие регистрируется`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, now(), EventType.PULL)
 
         eventService.create(event, MATCH.id)
 
@@ -32,8 +35,8 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие изменяется`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
-        val newEvent = OnePlayerEvent(PLAYERS_1[1].id, TEAM_1.id, Instant.now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, now(), EventType.PULL)
+        val newEvent = OnePlayerEvent(PLAYERS_1[1].id, TEAM_1.id, now(), EventType.PULL)
 
         eventService.create(event, MATCH.id)
         eventService.edit(0, newEvent, MATCH.id)
@@ -45,14 +48,14 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Получаем исключение при изменении, если события с таким индексом не существует`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, now(), EventType.PULL)
 
         assertThrows<IllegalArgumentException> { eventService.edit(0, event, MATCH.id) }
     }
 
     @Test
     fun `Событие удаляется`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, Instant.now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, TEAM_1.id, now(), EventType.PULL)
 
         eventService.create(event, MATCH.id)
         eventService.remove(0, MATCH.id)
@@ -69,11 +72,11 @@ class EventServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Выводится список всех событий`() {
         val events = listOf(
-            OnePlayerEvent(PLAYERS_2[0].id, TEAM_2.id, Instant.now(), EventType.PULL),
-            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, TEAM_1.id, TEAM_1.id, Instant.now(), EventType.GOAL),
+            OnePlayerEvent(PLAYERS_2[0].id, TEAM_2.id, now(), EventType.PULL),
+            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, TEAM_1.id, TEAM_1.id, now(), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, TEAM_1.id, TEAM_1.id, now(), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, TEAM_1.id, TEAM_1.id, now(), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, TEAM_1.id, TEAM_1.id, now(), EventType.GOAL),
         )
 
         events.forEach { eventService.create(it, MATCH.id) }

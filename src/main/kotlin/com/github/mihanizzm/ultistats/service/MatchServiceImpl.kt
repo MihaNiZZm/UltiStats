@@ -3,117 +3,139 @@ package com.github.mihanizzm.ultistats.service
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.exception.EntityNotFoundException
 import com.github.mihanizzm.ultistats.model.Match
-import com.github.mihanizzm.ultistats.model.events.*
+import com.github.mihanizzm.ultistats.model.MatchPlayer
+import com.github.mihanizzm.ultistats.model.MatchTeam
+import com.github.mihanizzm.ultistats.model.TeamScore
+import com.github.mihanizzm.ultistats.model.events.EventType
+import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchPlayerRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchRepository
-import org.slf4j.LoggerFactory
-import org.springframework.data.repository.findByIdOrNull
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchTeamRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamPlayerRepository
+import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
 
 @Service
-@Suppress("unused")
 class MatchServiceImpl(
     private val matchRepository: SpringDataMatchRepository,
+    private val matchTeamRepository: SpringDataMatchTeamRepository,
+    private val matchPlayerRepository: SpringDataMatchPlayerRepository,
+    private val teamPlayerRepository: SpringDataTeamPlayerRepository,
+    private val eventRepository: SpringDataEventRepository,
 ) : MatchService {
-    private val log = LoggerFactory.getLogger(MatchServiceImpl::class.java)
+    override fun get(matchId: UUID): Match? =
+        matchRepository.findByIdAndDeletedAtIsNull(matchId)?.hydrate(includeEvents = true)
 
-    override fun get(matchId: UUID): Match? = matchRepository.findByIdOrNull(matchId)
-
-    override fun getOrThrow(matchId: UUID): Match = matchRepository.findByIdOrNull(matchId)
+    override fun getOrThrow(matchId: UUID): Match = get(matchId)
         ?: throw EntityNotFoundException("Match $matchId not found")
 
+    @Transactional
     override fun create(match: Match) {
         matchRepository.save(match)
+        replaceParticipants(match.id, match.teamIds)
     }
 
+    @Transactional
     override fun update(match: Match) {
+        val storedTeamIds = matchTeamRepository.findAllByMatchIdOrderByPosition(match.id).map { it.teamId }
         matchRepository.save(match)
+        if (storedTeamIds != match.teamIds) replaceParticipants(match.id, match.teamIds)
     }
 
-    override fun delete(matchId: UUID) = matchRepository.deleteById(matchId)
+    override fun delete(matchId: UUID) {
+        get(matchId)?.let {
+            val deletedAt = Instant.now()
+            eventRepository.findAllByMatchIdAndDeletedAtIsNull(matchId).forEach { event ->
+                eventRepository.save(event.copy(deletedAt = deletedAt))
+            }
+            matchRepository.save(it.copy(deletedAt = deletedAt))
+        }
+    }
 
-    override fun getAll(): List<Match> = matchRepository.findAll()
+    override fun getAll(): List<Match> =
+        matchRepository.findAllByDeletedAtIsNull().map { it.hydrate(includeEvents = false) }
 
     override fun findAllFiltered(filter: MatchFilterRequest): List<Match> =
-        matchRepository.findAll().filter { it.matchesFilter(filter) }
+        getAll().filter { match ->
+            (filter.teamId == null || filter.teamId in match.teamIds) &&
+                (filter.status == null || filter.status == match.status)
+        }
 
-    override fun count(): Long = matchRepository.count()
+    override fun count(): Long = matchRepository.countByDeletedAtIsNull()
 
-    override fun countFiltered(filter: MatchFilterRequest): Long =
-        findAllFiltered(filter).size.toLong()
+    override fun countFiltered(filter: MatchFilterRequest): Long = findAllFiltered(filter).size.toLong()
 
-    override fun recalculateDiskHolder(matchId: UUID) {
+    @Transactional
+    override fun recalculateScore(matchId: UUID) {
         val match = getOrThrow(matchId)
-        match.diskHolderId = calculateDiskHolder(match.events)
-        update(match)
+        val scores = match.teamIds.associateWith { 0 }.toMutableMap()
+        match.events.forEach { event ->
+            if (event.type == EventType.GOAL || event.type == EventType.CALLAHAN) {
+                val teamId = (event as TwoPlayerEvent).toTeam
+                scores.computeIfPresent(teamId) { _, score -> score + 1 }
+            }
+        }
+        matchTeamRepository.findAllByMatchIdOrderByPosition(matchId).forEach {
+            it.score = scores.getValue(it.teamId)
+            matchTeamRepository.save(it)
+        }
     }
 
     override fun startMatch(matchId: UUID, timestamp: Instant): Boolean {
         val match = getOrThrow(matchId)
-        if (match.startedAt != null) {
-            return false
-        }
+        if (match.startedAt != null) return false
         match.startedAt = timestamp
-        update(match)
+        matchRepository.save(match)
         return true
     }
 
     override fun endMatch(matchId: UUID, timestamp: Instant): Boolean {
         val match = getOrThrow(matchId)
-        if (match.startedAt == null || match.endedAt != null) {
-            return false
-        }
+        if (match.startedAt == null || match.endedAt != null) return false
         match.endedAt = timestamp
-        update(match)
+        matchRepository.save(match)
         return true
     }
 
-    private fun calculateDiskHolder(events: List<Event>): UUID? {
-        var diskHolder: UUID? = null
-
-        for (event in events) {
-            diskHolder = when (event.type) {
-                // Диск переходит к получателю
-                EventType.PASS,
-                EventType.INTERCEPTION -> (event as TwoPlayerEvent).toPlayer
-
-                // Диск переходит к игроку, который подобрал
-                EventType.TURNOVER -> (event as OnePlayerEvent).player
-
-                // Диск никому не принадлежит (на земле или поинт завершён)
-                EventType.DROP,
-                EventType.BLOCK_MARKER,
-                EventType.BLOCK_FIELD,
-                EventType.GOAL,
-                EventType.CALLAHAN -> null
-
-                // Системные события не влияют на владельца диска
-                EventType.PULL,
-                EventType.BRICK,
-                EventType.TIMEOUT_START,
-                EventType.TIMEOUT_END,
-                EventType.HALFTIME_START,
-                EventType.HALFTIME_END -> diskHolder
-            }
+    private fun Match.hydrate(includeEvents: Boolean): Match {
+        val matchTeams = matchTeamRepository.findAllByMatchIdOrderByPosition(id)
+        val matchPlayers = matchPlayerRepository.findAllByMatchId(id)
+        val teamByPlayerId = matchPlayers.associate { it.playerId to it.teamId }
+        val events = if (includeEvents) {
+            eventRepository.findAllByMatchIdAndDeletedAtIsNullOrderBySequenceNumber(id)
+                .map { it.toDomain(teamByPlayerId) }
+                .toMutableList()
+        } else {
+            mutableListOf()
         }
-
-        return diskHolder
+        return copy(
+            teamIds = matchTeams.map { it.teamId },
+            teamScores = matchTeams.map { TeamScore(it.teamId, it.score) }.toMutableList(),
+            playerIdsByTeam = matchPlayers.groupBy({ it.teamId }, { it.playerId }),
+            events = events,
+            eventCount = if (includeEvents) events.size else
+                eventRepository.countByMatchIdAndDeletedAtIsNull(id).toInt(),
+        )
     }
 
-    private fun Match.matchesFilter(filter: MatchFilterRequest): Boolean {
-        filter.teamId?.let { teamId ->
-            if (!teamIds.contains(teamId)) {
-                return false
+    private fun replaceParticipants(matchId: UUID, teamIds: List<UUID>) {
+        val existingTeams = matchTeamRepository.findAllByMatchIdOrderByPosition(matchId)
+        if (existingTeams.map { it.teamId } == teamIds) return
+        matchPlayerRepository.deleteAllByMatchId(matchId)
+        matchPlayerRepository.flush()
+        matchTeamRepository.deleteAllByMatchId(matchId)
+        matchTeamRepository.flush()
+        matchTeamRepository.saveAll(teamIds.mapIndexed { index, teamId ->
+            MatchTeam(matchId, teamId, index + 1)
+        })
+        val players = teamIds.flatMap { teamId ->
+            teamPlayerRepository.findAllByTeamIdAndDeletedAtIsNull(teamId).map { membership ->
+                MatchPlayer(matchId, membership.playerId, teamId, membership.number)
             }
         }
-
-        filter.status?.let { status ->
-            if (this.status != status) {
-                return false
-            }
-        }
-
-        return true
+        matchPlayerRepository.saveAll(players)
     }
 }

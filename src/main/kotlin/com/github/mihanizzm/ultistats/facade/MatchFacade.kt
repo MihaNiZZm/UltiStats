@@ -33,7 +33,7 @@ class MatchFacade(
 
     fun getAll(): List<MatchResponse> =
         matchService.getAll().map { match ->
-            val teams = teamService.getAllInList(match.teamIds)
+            val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
             MatchResponse.from(match, teams.associateBy { it.id })
         }
 
@@ -52,7 +52,7 @@ class MatchFacade(
             .drop(page * size)
             .take(size)
             .map { match ->
-                val teams = teamService.getAllInList(match.teamIds)
+                val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
                 MatchListItemResponse.from(match, teams.associateBy { it.id })
             }
 
@@ -61,11 +61,12 @@ class MatchFacade(
 
     fun getById(id: UUID): MatchResponse? {
         val match = matchService.get(id) ?: return null
-        val teams = teamService.getAllInList(match.teamIds)
+        val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
         return MatchResponse.from(match, teams.associateBy { it.id })
     }
 
     fun create(request: CreateMatchRequest): MatchResponse? {
+        if (request.teamIds.size != 2 || request.teamIds.distinct().size != 2) return null
         val teams = teamService.getAllInList(request.teamIds)
         if (teams.size != request.teamIds.size) {
             return null
@@ -75,7 +76,6 @@ class MatchFacade(
             teamIds = request.teamIds,
             plannedStartTimestamp = request.plannedStartTimestamp,
         )
-        match.initTeamScores()
         matchService.create(match)
         return MatchResponse.from(match, teams.associateBy { it.id })
     }
@@ -84,6 +84,8 @@ class MatchFacade(
         val existingMatch = matchService.get(id) ?: return null
 
         val newTeamIds = request.teamIds ?: existingMatch.teamIds
+        if (newTeamIds.size != 2 || newTeamIds.distinct().size != 2) return null
+        if (newTeamIds != existingMatch.teamIds && existingMatch.events.isNotEmpty()) return null
         val teams = teamService.getAllInList(newTeamIds)
         val teamsById = teams.associateBy { it.id }
         if (teams.size != newTeamIds.size) {
@@ -109,7 +111,7 @@ class MatchFacade(
         if (!matchService.startMatch(id, request.timestamp)) {
             return null
         }
-        val teams = teamService.getAllInList(match.teamIds)
+        val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
         return MatchResponse.from(match, teams.associateBy { it.id })
     }
 
@@ -118,7 +120,7 @@ class MatchFacade(
         if (!matchService.endMatch(id, request.timestamp)) {
             return null
         }
-        val teams = teamService.getAllInList(match.teamIds)
+        val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
         return MatchResponse.from(match, teams.associateBy { it.id })
     }
 }

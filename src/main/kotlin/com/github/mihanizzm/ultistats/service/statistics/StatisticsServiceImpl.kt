@@ -34,7 +34,11 @@ class StatisticsServiceImpl(
     override fun recalculateMatchStatistics(matchId: UUID): MatchStatistics {
         val match = matchService.getOrThrow(matchId)
         val teamIds = match.teamIds
-        val initialStatistics = emptyStatistics(teamIds)
+        val initialStatistics = MatchStatistics(
+            playerStatistics = match.playerIdsByTeam.values.flatten().distinct()
+                .map { PlayerStatistics(playerId = it) },
+            teamStatistics = teamIds.map { TeamStatistics(teamId = it) },
+        )
 
         return statisticsAggregatorList.fold(initialStatistics) { stats, aggregator ->
             aggregator.aggregate(stats, match.events)

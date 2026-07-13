@@ -21,7 +21,8 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     }
 
     private fun recalculateTestMatchStatistics(): MatchStatistics {
-        matchService.update(MATCH)
+        MATCH.events.toList().forEach { eventService.create(it, MATCH.id) }
+        MATCH.events.clear()
         return statisticsService.recalculateMatchStatistics(MATCH.id)
     }
 

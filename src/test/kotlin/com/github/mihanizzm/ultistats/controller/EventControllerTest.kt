@@ -63,7 +63,7 @@ class EventControllerTest {
     }
 
     @Test
-    fun `Создание события TURNOVER возвращает diskHolderId`() {
+    fun `Создание события TURNOVER возвращает eventId`() {
         val player = players1.first()
         val request = CreateEventRequest(
             type = EventType.TURNOVER,
@@ -78,11 +78,11 @@ class EventControllerTest {
                 .content(objectMapper.writeValueAsString(request))
         )
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.diskHolderId").value(player.id.toString()))
+            .andExpect(jsonPath("$.eventId").isNotEmpty)
     }
 
     @Test
-    fun `Создание события PASS обновляет diskHolderId`() {
+    fun `Создание события PASS возвращает eventId`() {
         val player1 = players1[0]
         val player2 = players1[1]
 
@@ -105,7 +105,6 @@ class EventControllerTest {
             timestamp = Instant.now(),
             teamId = team1.id,
             playerId = player1.id,
-            toTeamId = team1.id,
             toPlayerId = player2.id,
         )
 
@@ -115,11 +114,11 @@ class EventControllerTest {
                 .content(objectMapper.writeValueAsString(passRequest))
         )
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.diskHolderId").value(player2.id.toString()))
+            .andExpect(jsonPath("$.eventId").isNotEmpty)
     }
 
     @Test
-    fun `Создание события GOAL сбрасывает diskHolderId`() {
+    fun `Создание события GOAL возвращает eventId`() {
         val player1 = players1[0]
         val player2 = players1[1]
 
@@ -132,7 +131,6 @@ class EventControllerTest {
             timestamp = Instant.now(),
             teamId = team1.id,
             playerId = player1.id,
-            toTeamId = team1.id,
             toPlayerId = player2.id,
         )
 
@@ -142,7 +140,7 @@ class EventControllerTest {
                 .content(objectMapper.writeValueAsString(goalRequest))
         )
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.diskHolderId").doesNotExist())
+            .andExpect(jsonPath("$.eventId").isNotEmpty)
     }
 
     @Test
@@ -156,7 +154,7 @@ class EventControllerTest {
     }
 
     @Test
-    fun `Удаление события пересчитывает diskHolderId`() {
+    fun `Удаление события возвращает eventId`() {
         val player1 = players1[0]
         val player2 = players1[1]
 
@@ -169,7 +167,6 @@ class EventControllerTest {
             timestamp = Instant.now(),
             teamId = team1.id,
             playerId = player1.id,
-            toTeamId = team1.id,
             toPlayerId = player2.id,
         )
         mockMvc.perform(
@@ -181,7 +178,7 @@ class EventControllerTest {
         // Удаляем пас (индекс 1)
         mockMvc.perform(delete("/api/v1/matches/${match.id}/events/1"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.diskHolderId").value(player1.id.toString()))
+            .andExpect(jsonPath("$.eventId").isNotEmpty)
     }
 
     @Test
@@ -283,7 +280,6 @@ class EventControllerTest {
             id = UUID.randomUUID(),
             teamIds = listOf(team1.id, team2.id),
         )
-        match.initTeamScores()
         matchService.create(match)
         return match
     }
