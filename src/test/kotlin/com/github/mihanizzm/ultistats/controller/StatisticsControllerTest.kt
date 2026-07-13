@@ -90,11 +90,11 @@ class StatisticsControllerTest {
 
         // Добавляем события: подбор и пас
         eventService.create(
-            OnePlayerEvent(player1.id, team1.id, Instant.now(), EventType.TURNOVER),
+            OnePlayerEvent(player1.id, Instant.now(), EventType.TURNOVER),
             match.id
         )
         eventService.create(
-            TwoPlayerEvent(player1.id, player2.id, team1.id, team1.id, Instant.now(), EventType.PASS),
+            TwoPlayerEvent(player1.id, player2.id, Instant.now(), EventType.PASS),
             match.id
         )
 
@@ -108,12 +108,12 @@ class StatisticsControllerTest {
     fun `Duration сериализуется в ISO-8601 строку`() {
         // Создаём события с таймаутом для проверки timeStatistics
         val now = Instant.now()
-        eventService.create(OnePlayerEvent(players1[0].id, team1.id, now, EventType.PULL), match.id)
-        eventService.create(OnePlayerEvent(players2[0].id, team2.id, now.plusSeconds(10), EventType.TURNOVER), match.id)
+        eventService.create(OnePlayerEvent(players1[0].id, now, EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(players2[0].id, now.plusSeconds(10), EventType.TURNOVER), match.id)
         eventService.create(TeamEvent(team2.id, now.plusSeconds(15), EventType.TIMEOUT_START), match.id)
         eventService.create(TeamEvent(team2.id, now.plusSeconds(75), EventType.TIMEOUT_END), match.id)
-        eventService.create(TwoPlayerEvent(players2[0].id, players2[1].id, team2.id, team2.id, now.plusSeconds(90), EventType.PASS), match.id)
-        eventService.create(TwoPlayerEvent(players2[1].id, players2[2].id, team2.id, team2.id, now.plusSeconds(100), EventType.GOAL), match.id)
+        eventService.create(TwoPlayerEvent(players2[0].id, players2[1].id, now.plusSeconds(90), EventType.PASS), match.id)
+        eventService.create(TwoPlayerEvent(players2[1].id, players2[2].id, now.plusSeconds(100), EventType.GOAL), match.id)
 
         val result = mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
             .andExpect(status().isOk)

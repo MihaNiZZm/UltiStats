@@ -12,6 +12,11 @@ import java.util.UUID
 
 @Entity
 @Table(name = "matches")
+/**
+ * The persisted match row plus transient aggregate fields used by the existing API.
+ * Team, roster, score, and event data live in normalized tables and are populated by
+ * MatchServiceImpl when it builds a read model.
+ */
 data class Match(
     @Id
     val id: UUID,

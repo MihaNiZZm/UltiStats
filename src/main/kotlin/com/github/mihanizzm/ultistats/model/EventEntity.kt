@@ -17,6 +17,11 @@ import java.util.UUID
 
 @Entity
 @Table(name = "events")
+/**
+ * Normalized persistence shape of an event. The public [Event] hierarchy deliberately
+ * stays separate so database-only identity, ordering, and soft-deletion fields do not
+ * become part of the event API.
+ */
 data class EventEntity(
     @Id
     val id: UUID,
@@ -46,19 +51,14 @@ data class EventEntity(
     @Column(name = "deleted_at")
     val deletedAt: Instant? = null,
 ) {
-    fun toDomain(teamByPlayerId: Map<UUID, UUID>): Event = when (eventType.category) {
+    fun toDomain(): Event = when (eventType.category) {
         com.github.mihanizzm.ultistats.model.events.EventCategory.ONE_PLAYER -> {
-            val playerId = requireNotNull(fromPlayerId)
-            OnePlayerEvent(playerId, requireNotNull(teamByPlayerId[playerId]), occurredAt, eventType)
+            OnePlayerEvent(requireNotNull(fromPlayerId), occurredAt, eventType)
         }
         com.github.mihanizzm.ultistats.model.events.EventCategory.TWO_PLAYER -> {
-            val fromPlayerId = requireNotNull(fromPlayerId)
-            val toPlayerId = requireNotNull(toPlayerId)
             TwoPlayerEvent(
-                fromPlayerId,
-                toPlayerId,
-                requireNotNull(teamByPlayerId[fromPlayerId]),
-                requireNotNull(teamByPlayerId[toPlayerId]),
+                requireNotNull(fromPlayerId),
+                requireNotNull(toPlayerId),
                 occurredAt,
                 eventType,
             )

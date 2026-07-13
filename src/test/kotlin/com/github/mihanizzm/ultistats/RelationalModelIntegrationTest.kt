@@ -90,8 +90,6 @@ class RelationalModelIntegrationTest {
         val goal = TwoPlayerEvent(
             firstPlayer.id,
             secondPlayer.id,
-            firstTeam.id,
-            firstTeam.id,
             Instant.parse("2026-07-13T12:00:00Z"),
             EventType.GOAL,
         )

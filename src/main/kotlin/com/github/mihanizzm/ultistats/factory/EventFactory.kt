@@ -23,10 +23,9 @@ class EventFactory(
         return when (request.type.category) {
             EventCategory.ONE_PLAYER -> {
                 val playerId = request.playerId ?: return null
-                val teamId = teamByPlayerId[playerId] ?: return null
+                if (playerId !in teamByPlayerId) return null
                 OnePlayerEvent(
                     player = playerId,
-                    team = teamId,
                     realTimestamp = request.timestamp,
                     type = request.type,
                 )
@@ -34,13 +33,10 @@ class EventFactory(
             EventCategory.TWO_PLAYER -> {
                 val playerId = request.playerId ?: return null
                 val toPlayerId = request.toPlayerId ?: return null
-                val teamId = teamByPlayerId[playerId] ?: return null
-                val toTeamId = teamByPlayerId[toPlayerId] ?: return null
+                if (playerId !in teamByPlayerId || toPlayerId !in teamByPlayerId) return null
                 TwoPlayerEvent(
                     fromPlayer = playerId,
                     toPlayer = toPlayerId,
-                    fromTeam = teamId,
-                    toTeam = toTeamId,
                     realTimestamp = request.timestamp,
                     type = request.type,
                 )

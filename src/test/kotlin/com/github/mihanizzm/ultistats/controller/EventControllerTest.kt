@@ -68,7 +68,6 @@ class EventControllerTest {
         val request = CreateEventRequest(
             type = EventType.TURNOVER,
             timestamp = Instant.now(),
-            teamId = team1.id,
             playerId = player.id,
         )
 
@@ -90,7 +89,6 @@ class EventControllerTest {
         val turnoverRequest = CreateEventRequest(
             type = EventType.TURNOVER,
             timestamp = Instant.now(),
-            teamId = team1.id,
             playerId = player1.id,
         )
         mockMvc.perform(
@@ -103,7 +101,6 @@ class EventControllerTest {
         val passRequest = CreateEventRequest(
             type = EventType.PASS,
             timestamp = Instant.now(),
-            teamId = team1.id,
             playerId = player1.id,
             toPlayerId = player2.id,
         )
@@ -123,13 +120,12 @@ class EventControllerTest {
         val player2 = players1[1]
 
         // Подбор
-        createEvent(EventType.TURNOVER, team1.id, player1.id)
+        createEvent(EventType.TURNOVER, player1.id)
 
         // Гол
         val goalRequest = CreateEventRequest(
             type = EventType.GOAL,
             timestamp = Instant.now(),
-            teamId = team1.id,
             playerId = player1.id,
             toPlayerId = player2.id,
         )
@@ -145,12 +141,29 @@ class EventControllerTest {
 
     @Test
     fun `Получение событий матча возвращает список`() {
-        val player = players1.first()
-        createEvent(EventType.TURNOVER, team1.id, player.id)
+        val fromPlayer = players1[0]
+        val toPlayer = players1[1]
+        createEvent(EventType.TURNOVER, fromPlayer.id)
+        mockMvc.perform(
+            post("/api/v1/matches/${match.id}/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(CreateEventRequest(
+                    type = EventType.PASS,
+                    timestamp = Instant.now(),
+                    playerId = fromPlayer.id,
+                    toPlayerId = toPlayer.id,
+                )))
+        ).andExpect(status().isCreated)
 
         mockMvc.perform(get("/api/v1/matches/${match.id}/events"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].player").value(fromPlayer.id.toString()))
+            .andExpect(jsonPath("$[0].team").doesNotExist())
+            .andExpect(jsonPath("$[1].fromPlayer").value(fromPlayer.id.toString()))
+            .andExpect(jsonPath("$[1].toPlayer").value(toPlayer.id.toString()))
+            .andExpect(jsonPath("$[1].fromTeam").doesNotExist())
+            .andExpect(jsonPath("$[1].toTeam").doesNotExist())
     }
 
     @Test
@@ -159,13 +172,12 @@ class EventControllerTest {
         val player2 = players1[1]
 
         // Подбор
-        createEvent(EventType.TURNOVER, team1.id, player1.id)
+        createEvent(EventType.TURNOVER, player1.id)
 
         // Пас
         val passRequest = CreateEventRequest(
             type = EventType.PASS,
             timestamp = Instant.now(),
-            teamId = team1.id,
             playerId = player1.id,
             toPlayerId = player2.id,
         )
@@ -186,7 +198,6 @@ class EventControllerTest {
         val request = CreateEventRequest(
             type = EventType.PULL,
             timestamp = Instant.now(),
-            teamId = team1.id,
             playerId = players1.first().id,
         )
 
@@ -203,7 +214,7 @@ class EventControllerTest {
         val player = players1.first()
 
         // Создаём событие
-        createEvent(EventType.TURNOVER, team1.id, player.id)
+        createEvent(EventType.TURNOVER, player.id)
 
         val newTimestamp = Instant.now().plusSeconds(100)
         val updateRequest = UpdateEventRequest(timestamp = newTimestamp)
@@ -221,7 +232,7 @@ class EventControllerTest {
         val player = players1.first()
 
         // Создаём событие TURNOVER
-        createEvent(EventType.TURNOVER, team1.id, player.id)
+        createEvent(EventType.TURNOVER, player.id)
 
         val updateRequest = UpdateEventRequest(type = EventType.DROP)
 
@@ -245,11 +256,10 @@ class EventControllerTest {
             .andExpect(status().isNotFound)
     }
 
-    private fun createEvent(type: EventType, teamId: UUID, playerId: UUID) {
+    private fun createEvent(type: EventType, playerId: UUID) {
         val request = CreateEventRequest(
             type = type,
             timestamp = Instant.now(),
-            teamId = teamId,
             playerId = playerId,
         )
         mockMvc.perform(

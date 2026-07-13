@@ -22,19 +22,13 @@ class TimeStatisticsTest : MatchAbstractTest() {
         matchService.update(MATCH)
     }
 
-    private fun recalculateTestMatchStatistics(): com.github.mihanizzm.ultistats.model.statistics.MatchStatistics {
-        MATCH.events.toList().forEach { eventService.create(it, MATCH.id) }
-        MATCH.events.clear()
-        return statisticsService.recalculateMatchStatistics(MATCH.id)
-    }
-
     @Test
     fun `Владение только у атакующей команды, игроки получают свое время`() {
         // Пулл (TEAM_1) -> Подбор (TEAM_2) -> Пас (TEAM_2) -> Гол (TEAM_2)
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(25), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(40), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(25), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(40), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
 
@@ -52,12 +46,12 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Таймаут учитывается в общих и командных таймингах`() {
         // Пулл -> Подбор -> Таймаут -> Конец таймаута -> Пас -> Гол
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
         MATCH.events.add(TeamEvent(UUIDS[1], ts(15), EventType.TIMEOUT_START))
         MATCH.events.add(TeamEvent(UUIDS[1], ts(75), EventType.TIMEOUT_END)) // 60 сек таймаута
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(90), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(100), EventType.GOAL))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(90), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(100), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
 
@@ -75,12 +69,12 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Время между очками увеличивается у команды со вторым пуллом`() {
         // Первый поинт
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(20), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(30), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(20), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(30), EventType.GOAL))
         // Второй пулл делает команда забившая гол (TEAM_2)
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(50), EventType.PULL)) // между очками 20 сек
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(50), EventType.PULL)) // между очками 20 сек
 
         val stats = recalculateTestMatchStatistics()
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time
@@ -93,18 +87,18 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Халфтайм учитывается и не попадает во время между очками`() {
         // Поинт до халфтайма
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(20), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(30), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(20), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(30), EventType.GOAL))
         // Халфтайм 60 сек
         MATCH.events.add(SystemEvent(ts(31), EventType.HALFTIME_START))
         MATCH.events.add(SystemEvent(ts(91), EventType.HALFTIME_END))
         // Новый поинт после халфтайма
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(100), EventType.PULL)) // между очками после халфтайма: 91..100 = 9 сек
-        MATCH.events.add(OnePlayerEvent(UUIDS[3], UUIDS[0], ts(110), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], UUIDS[0], UUIDS[0], ts(120), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], UUIDS[0], UUIDS[0], ts(130), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(100), EventType.PULL)) // между очками после халфтайма: 91..100 = 9 сек
+        MATCH.events.add(OnePlayerEvent(UUIDS[3], ts(110), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], ts(120), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], ts(130), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
 
@@ -117,18 +111,18 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Чистое время исключает между поинтами, таймауты и халфтайм`() {
         // Поинт 1 с таймаутом
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
         MATCH.events.add(TeamEvent(UUIDS[1], ts(20), EventType.TIMEOUT_START))
         MATCH.events.add(TeamEvent(UUIDS[1], ts(80), EventType.TIMEOUT_END)) // 60
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(90), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(100), EventType.GOAL))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(90), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(100), EventType.GOAL))
         // Между поинтами
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(130), EventType.PULL)) // 30
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(130), EventType.PULL)) // 30
         // Поинт 2 без остановок
-        MATCH.events.add(OnePlayerEvent(UUIDS[3], UUIDS[0], ts(140), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], UUIDS[0], UUIDS[0], ts(150), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], UUIDS[0], UUIDS[0], ts(160), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[3], ts(140), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], ts(150), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], ts(160), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
 
@@ -146,15 +140,15 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Между поинтами не включает халфтайм (минимальная последовательность)`() {
         // Поинт завершен голом
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(20), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(30), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(20), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(30), EventType.GOAL))
         // Халфтайм 60 сек сразу после поинта
         MATCH.events.add(SystemEvent(ts(31), EventType.HALFTIME_START))
         MATCH.events.add(SystemEvent(ts(91), EventType.HALFTIME_END))
         // Следующий пулл (время между поинтами должно считаться только после HALFTIME_END)
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(95), EventType.PULL)) // 91..95 = 4 сек
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(95), EventType.PULL)) // 91..95 = 4 сек
 
         val stats = recalculateTestMatchStatistics()
 
@@ -166,12 +160,12 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Время игроков в длинной цепочке пасов считается корректно`() {
         // Пулл -> Подбор -> несколько пасов -> Гол
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(5), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(15), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(25), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[9], UUIDS[10], UUIDS[1], UUIDS[1], ts(35), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[10], UUIDS[11], UUIDS[1], UUIDS[1], ts(50), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(5), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(15), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(25), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[9], UUIDS[10], ts(35), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[10], UUIDS[11], ts(50), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
         fun playerTime(idIdx: Int) = stats.playerStatistics.first { it.playerId == UUIDS[idIdx] }.time.totalPossessionTime
@@ -185,13 +179,13 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Время владения не начисляется между дропом и подбором другой командой`() {
         // Пулл -> Подбор (TEAM_2) -> Пас -> Дроп -> Подбор (TEAM_1) -> Пас -> Гол
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(10), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(20), EventType.PASS))
-        MATCH.events.add(OnePlayerEvent(UUIDS[8], UUIDS[1], ts(25), EventType.DROP)) // владение никому до следующего подбора
-        MATCH.events.add(OnePlayerEvent(UUIDS[3], UUIDS[0], ts(40), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], UUIDS[0], UUIDS[0], ts(50), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], UUIDS[0], UUIDS[0], ts(60), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(10), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(20), EventType.PASS))
+        MATCH.events.add(OnePlayerEvent(UUIDS[8], ts(25), EventType.DROP)) // владение никому до следующего подбора
+        MATCH.events.add(OnePlayerEvent(UUIDS[3], ts(40), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[3], UUIDS[2], ts(50), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[2], UUIDS[5], ts(60), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time
@@ -204,10 +198,10 @@ class TimeStatisticsTest : MatchAbstractTest() {
     @Test
     fun `Пулл не дает владение до подбора диска другой командой`() {
         // Пулл (TEAM_1) -> длительная пауза -> Подбор (TEAM_2) -> Пас -> Гол
-        MATCH.events.add(OnePlayerEvent(UUIDS[2], UUIDS[0], ts(0), EventType.PULL))
-        MATCH.events.add(OnePlayerEvent(UUIDS[7], UUIDS[1], ts(30), EventType.TURNOVER))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], UUIDS[1], UUIDS[1], ts(50), EventType.PASS))
-        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], UUIDS[1], UUIDS[1], ts(60), EventType.GOAL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[2], ts(0), EventType.PULL))
+        MATCH.events.add(OnePlayerEvent(UUIDS[7], ts(30), EventType.TURNOVER))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[7], UUIDS[8], ts(50), EventType.PASS))
+        MATCH.events.add(TwoPlayerEvent(UUIDS[8], UUIDS[9], ts(60), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
         val team1 = stats.teamStatistics.first { it.teamId == UUIDS[0] }.time

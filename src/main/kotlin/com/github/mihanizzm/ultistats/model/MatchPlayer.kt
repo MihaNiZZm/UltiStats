@@ -8,6 +8,11 @@ import jakarta.persistence.Table
 import java.io.Serializable
 import java.util.UUID
 
+/**
+ * JPA identity for the `(match_id, player_id)` primary key. `IdClass` keeps both foreign-key
+ * columns directly accessible on MatchPlayer and makes repository queries simpler than an
+ * embedded key would; both mappings are standard JPA composite-key strategies.
+ */
 data class MatchPlayerId(
     val matchId: UUID = UUID(0, 0),
     val playerId: UUID = UUID(0, 0),

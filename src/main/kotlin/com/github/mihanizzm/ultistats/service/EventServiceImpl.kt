@@ -3,7 +3,6 @@ package com.github.mihanizzm.ultistats.service
 import com.github.mihanizzm.ultistats.model.EventEntity
 import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
-import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchPlayerRepository
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -12,7 +11,6 @@ import java.util.UUID
 @Service
 class EventServiceImpl(
     private val eventRepository: SpringDataEventRepository,
-    private val matchPlayerRepository: SpringDataMatchPlayerRepository,
     private val matchService: MatchService,
 ) : EventService {
     @Transactional
@@ -46,9 +44,7 @@ class EventServiceImpl(
 
     override fun getAllEventsOfMatch(matchId: UUID): List<Event> {
         matchService.getOrThrow(matchId)
-        val teamByPlayerId = matchPlayerRepository.findAllByMatchId(matchId)
-            .associate { it.playerId to it.teamId }
-        return getEntities(matchId).map { it.toDomain(teamByPlayerId) }
+        return getEntities(matchId).map { it.toDomain() }
     }
 
     private fun getEntities(matchId: UUID): List<EventEntity> =

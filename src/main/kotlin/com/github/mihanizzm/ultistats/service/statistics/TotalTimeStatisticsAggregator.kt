@@ -15,7 +15,11 @@ import java.util.UUID
 @Component
 @Suppress("unused")
 class TotalTimeStatisticsAggregator : StatisticsAggregator {
-    override fun aggregate(previousStatisticsState: MatchStatistics, events: List<Event>): MatchStatistics {
+    override fun aggregate(
+        previousStatisticsState: MatchStatistics,
+        events: List<Event>,
+        teamByPlayerId: Map<UUID, UUID>,
+    ): MatchStatistics {
         var lastEventTime: Instant? = null
         var currentTeamPossessing: UUID? = null
         var currentPlayerPossessing: UUID? = null
@@ -58,7 +62,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     lastBetweenPointsStart = event.realTimestamp
                 }
                 EventType.PULL -> {
-                    val pullTeam = (event as OnePlayerEvent).team
+                    val pullTeam = teamByPlayerId.getValue((event as OnePlayerEvent).player)
                     // Добавляем во время между поинтами только чистый отрезок между окончанием предыдущего поинта
                     // и текущим пуллом, исключая таймауты и халфтайм.
                     val between = if (lastBetweenPointsStart != null) {
@@ -76,7 +80,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                 EventType.BRICK -> { }
                 EventType.TURNOVER -> {
                     val ope = event as OnePlayerEvent
-                    currentTeamPossessing = ope.team
+                    currentTeamPossessing = teamByPlayerId.getValue(ope.player)
                     currentPlayerPossessing = ope.player
                 }
                 EventType.BLOCK_MARKER, EventType.BLOCK_FIELD, EventType.DROP -> {
@@ -85,7 +89,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                 }
                 EventType.INTERCEPTION -> {
                     val tpe = event as TwoPlayerEvent
-                    currentTeamPossessing = tpe.toTeam
+                    currentTeamPossessing = teamByPlayerId.getValue(tpe.toPlayer)
                     currentPlayerPossessing = tpe.toPlayer
                 }
                 EventType.CALLAHAN -> {

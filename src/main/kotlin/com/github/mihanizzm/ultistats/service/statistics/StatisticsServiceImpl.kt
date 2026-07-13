@@ -39,9 +39,12 @@ class StatisticsServiceImpl(
                 .map { PlayerStatistics(playerId = it) },
             teamStatistics = teamIds.map { TeamStatistics(teamId = it) },
         )
+        val teamByPlayerId = match.playerIdsByTeam.flatMap { (teamId, playerIds) ->
+            playerIds.map { it to teamId }
+        }.toMap()
 
         return statisticsAggregatorList.fold(initialStatistics) { stats, aggregator ->
-            aggregator.aggregate(stats, match.events)
+            aggregator.aggregate(stats, match.events, teamByPlayerId)
         }
     }
 }

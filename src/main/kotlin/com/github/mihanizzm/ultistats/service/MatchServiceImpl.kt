@@ -70,11 +70,17 @@ class MatchServiceImpl(
 
     @Transactional
     override fun recalculateScore(matchId: UUID) {
+        // Events are the source of truth; match_teams.score is a cache for fast match lists.
+        // Player-to-team attribution comes from the match roster snapshot, not the current roster.
         val match = getOrThrow(matchId)
         val scores = match.teamIds.associateWith { 0 }.toMutableMap()
+        val teamByPlayerId = match.playerIdsByTeam.flatMap { (teamId, playerIds) ->
+            playerIds.map { it to teamId }
+        }.toMap()
         match.events.forEach { event ->
             if (event.type == EventType.GOAL || event.type == EventType.CALLAHAN) {
-                val teamId = (event as TwoPlayerEvent).toTeam
+                val scoringPlayer = (event as TwoPlayerEvent).toPlayer
+                val teamId = teamByPlayerId[scoringPlayer] ?: return@forEach
                 scores.computeIfPresent(teamId) { _, score -> score + 1 }
             }
         }
@@ -101,12 +107,13 @@ class MatchServiceImpl(
     }
 
     private fun Match.hydrate(includeEvents: Boolean): Match {
+        // The API still consumes Match as an aggregate. Rebuild its transient read fields from
+        // normalized tables while avoiding the much larger event query on match-list requests.
         val matchTeams = matchTeamRepository.findAllByMatchIdOrderByPosition(id)
         val matchPlayers = matchPlayerRepository.findAllByMatchId(id)
-        val teamByPlayerId = matchPlayers.associate { it.playerId to it.teamId }
         val events = if (includeEvents) {
             eventRepository.findAllByMatchIdAndDeletedAtIsNullOrderBySequenceNumber(id)
-                .map { it.toDomain(teamByPlayerId) }
+                .map { it.toDomain() }
                 .toMutableList()
         } else {
             mutableListOf()
@@ -122,6 +129,8 @@ class MatchServiceImpl(
     }
 
     private fun replaceParticipants(matchId: UUID, teamIds: List<UUID>) {
+        // Preserve the request order in match_teams.position and snapshot current memberships.
+        // The snapshot keeps historical event attribution stable after later roster changes.
         val existingTeams = matchTeamRepository.findAllByMatchIdOrderByPosition(matchId)
         if (existingTeams.map { it.teamId } == teamIds) return
         matchPlayerRepository.deleteAllByMatchId(matchId)

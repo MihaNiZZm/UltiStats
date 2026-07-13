@@ -10,8 +10,6 @@ import java.util.UUID
 data class TwoPlayerEvent(
     val fromPlayer: UUID,
     val toPlayer: UUID,
-    val fromTeam: UUID,
-    val toTeam: UUID,
     override val realTimestamp: Instant,
     override val type: EventType,
 ) : Event {
