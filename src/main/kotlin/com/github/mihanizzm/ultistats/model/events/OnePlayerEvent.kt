@@ -9,7 +9,6 @@ import java.util.UUID
  */
 data class OnePlayerEvent(
     val player: UUID,
-    val team: UUID,
     override val realTimestamp: Instant,
     override val type: EventType,
 ) : Event {

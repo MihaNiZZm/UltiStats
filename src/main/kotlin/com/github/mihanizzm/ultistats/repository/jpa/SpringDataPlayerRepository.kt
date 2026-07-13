@@ -7,21 +7,25 @@ import java.util.UUID
 
 interface SpringDataPlayerRepository : JpaRepository<Player, UUID> {
 
-    fun findAllByTeamId(teamId: UUID): List<Player>
+    fun findByIdAndDeletedAtIsNull(id: UUID): Player?
 
-    fun findAllByIdIn(ids: List<UUID>): List<Player>
+    fun findAllByIdInAndDeletedAtIsNull(ids: List<UUID>): List<Player>
+
+    fun findAllByDeletedAtIsNull(): List<Player>
 
     @Query("""
         SELECT p FROM Player p
-        WHERE (:teamId IS NULL OR p.teamId = :teamId)
+        WHERE p.deletedAt IS NULL
         AND (:name IS NULL OR LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%')))
     """)
-    fun findFiltered(teamId: UUID?, name: String?): List<Player>
+    fun findFiltered(name: String?): List<Player>
 
     @Query("""
         SELECT COUNT(p) FROM Player p
-        WHERE (:teamId IS NULL OR p.teamId = :teamId)
+        WHERE p.deletedAt IS NULL
         AND (:name IS NULL OR LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%')))
     """)
-    fun countFiltered(teamId: UUID?, name: String?): Long
+    fun countFiltered(name: String?): Long
+
+    fun countByDeletedAtIsNull(): Long
 }

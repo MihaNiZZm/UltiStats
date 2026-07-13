@@ -17,6 +17,8 @@ interface TeamService {
 
     fun getAllInList(ids: List<UUID>): List<Team>
 
+    fun getAllInListIncludingDeleted(ids: List<UUID>): List<Team>
+
     fun findAllFiltered(filter: TeamFilterRequest): List<Team>
 
     fun count(): Long

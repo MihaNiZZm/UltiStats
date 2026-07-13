@@ -5,12 +5,12 @@ package com.github.mihanizzm.ultistats.model.events
  */
 enum class EventCategory {
     /**
-     * Событие с одним игроком. Требует: player, team.
+     * Событие с одним игроком. Требует: player.
      */
     ONE_PLAYER,
 
     /**
-     * Событие с двумя игроками. Требует: fromPlayer, toPlayer, fromTeam, toTeam.
+     * Событие с двумя игроками. Требует: fromPlayer, toPlayer.
      */
     TWO_PLAYER,
 

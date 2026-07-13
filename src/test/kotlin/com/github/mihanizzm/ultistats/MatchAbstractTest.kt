@@ -4,6 +4,7 @@ import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.Event
+import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
@@ -143,7 +144,7 @@ abstract class MatchAbstractTest {
             UUIDS[12],
             listOf(TEAM_1.id, TEAM_2.id),
             mutableListOf<Event>(),
-        ).apply { initTeamScores() }
+        )
     }
 
     @BeforeEach
@@ -159,5 +160,11 @@ abstract class MatchAbstractTest {
         PLAYERS_2.forEach { playerService.create(it) }
 
         matchService.create(MATCH)
+    }
+
+    protected fun recalculateTestMatchStatistics(): MatchStatistics {
+        MATCH.events.toList().forEach { eventService.create(it, MATCH.id) }
+        MATCH.events.clear()
+        return statisticsService.recalculateMatchStatistics(MATCH.id)
     }
 }

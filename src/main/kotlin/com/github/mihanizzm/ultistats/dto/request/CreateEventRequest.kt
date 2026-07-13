@@ -9,6 +9,5 @@ data class CreateEventRequest(
     val timestamp: Instant,
     val teamId: UUID? = null,
     val playerId: UUID? = null,
-    val toTeamId: UUID? = null,
     val toPlayerId: UUID? = null,
 )

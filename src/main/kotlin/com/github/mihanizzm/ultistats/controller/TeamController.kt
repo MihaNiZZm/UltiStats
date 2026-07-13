@@ -82,9 +82,10 @@ class TeamController(
     @Operation(summary = "Добавить существующего игрока в команду")
     fun addPlayer(
         @PathVariable teamId: UUID,
-        @PathVariable playerId: UUID
+        @PathVariable playerId: UUID,
+        @RequestParam(required = false) number: Int?,
     ): ResponseEntity<TeamDetailResponse> =
-        teamFacade.addPlayerToTeam(teamId, playerId)
+        teamFacade.addPlayerToTeam(teamId, playerId, number)
             ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
             ?: ResponseEntity.notFound().build()
 

@@ -2,10 +2,10 @@ package com.github.mihanizzm.ultistats.service
 
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.model.Team
-import com.github.mihanizzm.ultistats.repository.jpa.SpringDataPlayerRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamPlayerRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamRepository
 import org.slf4j.LoggerFactory
-import org.springframework.data.repository.findByIdOrNull
+import java.time.Instant
 import org.springframework.stereotype.Service
 import java.util.UUID
 
@@ -13,11 +13,11 @@ import java.util.UUID
 @Suppress("unused")
 class TeamServiceImpl(
     private val teamRepository: SpringDataTeamRepository,
-    private val playerRepository: SpringDataPlayerRepository,
+    private val teamPlayerRepository: SpringDataTeamPlayerRepository,
 ) : TeamService {
     private val log = LoggerFactory.getLogger(TeamServiceImpl::class.java)
 
-    override fun get(teamId: UUID): Team? = teamRepository.findByIdOrNull(teamId)?.withPlayerIds()
+    override fun get(teamId: UUID): Team? = teamRepository.findByIdAndDeletedAtIsNull(teamId)?.withPlayerIds()
 
     override fun create(team: Team) {
         teamRepository.save(team)
@@ -27,32 +27,38 @@ class TeamServiceImpl(
         teamRepository.save(team)
     }
 
-    override fun delete(teamId: UUID) = teamRepository.deleteById(teamId)
+    override fun delete(teamId: UUID) {
+        get(teamId)?.let { teamRepository.save(it.copy(deletedAt = Instant.now())) }
+    }
 
-    override fun getAll(): List<Team> = teamRepository.findAll().withPlayerIds()
+    override fun getAll(): List<Team> = teamRepository.findAllByDeletedAtIsNull().withPlayerIds()
 
-    override fun getAllInList(ids: List<UUID>): List<Team> = teamRepository.findAllByIdIn(ids).withPlayerIds()
+    override fun getAllInList(ids: List<UUID>): List<Team> =
+        teamRepository.findAllByIdInAndDeletedAtIsNull(ids).withPlayerIds()
+
+    override fun getAllInListIncludingDeleted(ids: List<UUID>): List<Team> =
+        teamRepository.findAllById(ids).toList().withPlayerIds()
 
     override fun findAllFiltered(filter: TeamFilterRequest): List<Team> {
         val teams = if (filter.name != null) {
             teamRepository.findByNameContainingIgnoreCase(filter.name)
         } else {
-            teamRepository.findAll()
+            teamRepository.findAllByDeletedAtIsNull()
         }
         return teams.withPlayerIds()
     }
 
-    override fun count(): Long = teamRepository.count()
+    override fun count(): Long = teamRepository.countByDeletedAtIsNull()
 
     override fun countFiltered(filter: TeamFilterRequest): Long =
         if (filter.name != null) {
             teamRepository.countByNameContainingIgnoreCase(filter.name)
         } else {
-            teamRepository.count()
+            teamRepository.countByDeletedAtIsNull()
         }
 
     private fun List<Team>.withPlayerIds(): List<Team> = map { it.withPlayerIds() }
 
     private fun Team.withPlayerIds(): Team =
-        copy(playerIds = playerRepository.findAllByTeamId(id).map { it.id })
+        copy(playerIds = teamPlayerRepository.findAllByTeamIdAndDeletedAtIsNull(id).map { it.playerId })
 }

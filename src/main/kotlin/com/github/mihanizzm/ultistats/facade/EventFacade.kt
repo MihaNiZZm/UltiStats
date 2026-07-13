@@ -34,10 +34,10 @@ class EventFacade(
         if (matchService.get(matchId) == null) {
             return EventResult.NotFound
         }
-        val event = eventFactory.createFromRequest(request)
+        val event = eventFactory.createFromRequest(request, matchId)
             ?: return EventResult.BadRequest
-        val diskHolderId = eventService.create(event, matchId)
-        return EventResult.Success(EventResponse(diskHolderId))
+        val eventId = eventService.create(event, matchId)
+        return EventResult.Success(EventResponse(eventId))
     }
 
     fun edit(matchId: UUID, index: Int, request: UpdateEventRequest): EventResult {
@@ -47,44 +47,41 @@ class EventFacade(
         val existingEvent = eventService.getAllEventsOfMatch(matchId).getOrNull(index)
             ?: return EventResult.NotFound
 
-        // Частичное обновление: используем существующие значения, если новые не переданы
-        val event = when (existingEvent) {
+        val mergedRequest = when (existingEvent) {
             is com.github.mihanizzm.ultistats.model.events.OnePlayerEvent -> {
-                existingEvent.copy(
+                CreateEventRequest(
                     type = request.type ?: existingEvent.type,
-                    realTimestamp = request.timestamp ?: existingEvent.realTimestamp,
-                    team = request.teamId ?: existingEvent.team,
-                    player = request.playerId ?: existingEvent.player,
+                    timestamp = request.timestamp ?: existingEvent.realTimestamp,
+                    playerId = request.playerId ?: existingEvent.player,
                 )
             }
             is com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent -> {
-                existingEvent.copy(
+                CreateEventRequest(
                     type = request.type ?: existingEvent.type,
-                    realTimestamp = request.timestamp ?: existingEvent.realTimestamp,
-                    fromTeam = request.teamId ?: existingEvent.fromTeam,
-                    toTeam = request.toTeamId ?: existingEvent.toTeam,
-                    fromPlayer = request.playerId ?: existingEvent.fromPlayer,
-                    toPlayer = request.toPlayerId ?: existingEvent.toPlayer,
+                    timestamp = request.timestamp ?: existingEvent.realTimestamp,
+                    playerId = request.playerId ?: existingEvent.fromPlayer,
+                    toPlayerId = request.toPlayerId ?: existingEvent.toPlayer,
                 )
             }
             is com.github.mihanizzm.ultistats.model.events.TeamEvent -> {
-                existingEvent.copy(
+                CreateEventRequest(
                     type = request.type ?: existingEvent.type,
-                    realTimestamp = request.timestamp ?: existingEvent.realTimestamp,
-                    team = request.teamId ?: existingEvent.team,
+                    timestamp = request.timestamp ?: existingEvent.realTimestamp,
+                    teamId = request.teamId ?: existingEvent.team,
                 )
             }
             is com.github.mihanizzm.ultistats.model.events.SystemEvent -> {
-                existingEvent.copy(
+                CreateEventRequest(
                     type = request.type ?: existingEvent.type,
-                    realTimestamp = request.timestamp ?: existingEvent.realTimestamp,
+                    timestamp = request.timestamp ?: existingEvent.realTimestamp,
                 )
             }
         }
+        val event = eventFactory.createFromRequest(mergedRequest, matchId) ?: return EventResult.BadRequest
 
         return try {
-            val diskHolderId = eventService.edit(index, event, matchId)
-            EventResult.Success(EventResponse(diskHolderId))
+            val eventId = eventService.edit(index, event, matchId)
+            EventResult.Success(EventResponse(eventId))
         } catch (e: IllegalArgumentException) {
             EventResult.NotFound
         }
@@ -95,8 +92,8 @@ class EventFacade(
             return EventResult.NotFound
         }
         return try {
-            val diskHolderId = eventService.remove(index, matchId)
-            EventResult.Success(EventResponse(diskHolderId))
+            val eventId = eventService.remove(index, matchId)
+            EventResult.Success(EventResponse(eventId))
         } catch (e: IllegalArgumentException) {
             EventResult.NotFound
         }

@@ -24,10 +24,7 @@ interface MatchService {
 
     fun countFiltered(filter: MatchFilterRequest): Long
 
-    /**
-     * Пересчитать владельца диска на основе списка событий матча.
-     */
-    fun recalculateDiskHolder(matchId: UUID)
+    fun recalculateScore(matchId: UUID)
 
     /**
      * Начать матч. Устанавливает startedAt в переданное время.

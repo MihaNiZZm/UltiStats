@@ -183,9 +183,10 @@ class PlayerControllerTest {
 
     @Test
     fun `Сортировка по номеру работает`() {
-        createTestPlayerWithNumber("Игрок", "Первый", 10)
-        createTestPlayerWithNumber("Игрок", "Второй", 5)
-        createTestPlayerWithNumber("Игрок", "Третий", 15)
+        val team = createTestTeam()
+        createTestPlayerWithNumber("Игрок", "Первый", 10, team.id)
+        createTestPlayerWithNumber("Игрок", "Второй", 5, team.id)
+        createTestPlayerWithNumber("Игрок", "Третий", 15, team.id)
 
         mockMvc.perform(
             get("/api/v1/players")
@@ -237,7 +238,8 @@ class PlayerControllerTest {
 
     @Test
     fun `Список игроков содержит номер игрока`() {
-        createTestPlayerWithNumber("Иван", "Иванов", 42)
+        val team = createTestTeam()
+        createTestPlayerWithNumber("Иван", "Иванов", 42, team.id)
 
         mockMvc.perform(get("/api/v1/players"))
             .andExpect(status().isOk)
@@ -272,7 +274,8 @@ class PlayerControllerTest {
 
     @Test
     fun `Частичное обновление игрока (несколько полей) работает`() {
-        val player = createTestPlayerWithNumber("Иван", "Иванов", 10)
+        val team = createTestTeam()
+        val player = createTestPlayerWithNumber("Иван", "Иванов", 10, team.id)
 
         val updateRequest = UpdatePlayerRequest(
             firstName = "Пётр",
@@ -302,10 +305,15 @@ class PlayerControllerTest {
             .andExpect(status().isNotFound)
     }
 
-    private fun createTestPlayerWithNumber(firstName: String, lastName: String, number: Int): Player {
+    private fun createTestPlayerWithNumber(
+        firstName: String,
+        lastName: String,
+        number: Int,
+        teamId: UUID? = null,
+    ): Player {
         val player = Player(
             id = UUID.randomUUID(),
-            teamId = null,
+            teamId = teamId,
             number = number,
             firstName = firstName,
             lastName = lastName,

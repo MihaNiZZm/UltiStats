@@ -20,11 +20,6 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
         matchService.update(MATCH)
     }
 
-    private fun recalculateTestMatchStatistics(): MatchStatistics {
-        matchService.update(MATCH)
-        return statisticsService.recalculateMatchStatistics(MATCH.id)
-    }
-
     @Test
     fun `Создание пустой статистики`() {
         val teamIds = listOf(TEAM_1.id, TEAM_2.id)
@@ -43,7 +38,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перебития в поле записана`() {
         MATCH.events.add(
-            TwoPlayerEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now(), EventType.BLOCK_FIELD),
+            TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK_FIELD),
         )
 
         val expectedStats = MatchStatistics(
@@ -75,7 +70,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика кэллахана записана`() {
         MATCH.events.add(
-            TwoPlayerEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now(), EventType.CALLAHAN),
+            TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.CALLAHAN),
         )
 
         val expectedStats = MatchStatistics(
@@ -113,7 +108,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перебития на маркере записана`() {
         MATCH.events.add(
-            TwoPlayerEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now(), EventType.BLOCK_MARKER),
+            TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK_MARKER),
         )
 
         val expectedStats = MatchStatistics(
@@ -145,7 +140,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перехвата записана`() {
         MATCH.events.add(
-            TwoPlayerEvent(UUIDS[2], UUIDS[7], UUIDS[0], UUIDS[1], Instant.now(), EventType.INTERCEPTION),
+            TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.INTERCEPTION),
         )
 
         val expectedStats = MatchStatistics(
@@ -177,7 +172,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика гола записана`() {
         MATCH.events.add(
-            TwoPlayerEvent(UUIDS[2], UUIDS[3], UUIDS[0], UUIDS[0], Instant.now(), EventType.GOAL),
+            TwoPlayerEvent(UUIDS[2], UUIDS[3], Instant.now(), EventType.GOAL),
         )
 
         val expectedStats = MatchStatistics(
@@ -218,7 +213,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика паса записана`() {
         MATCH.events.add(
-            TwoPlayerEvent(UUIDS[2], UUIDS[3], UUIDS[0], UUIDS[0], Instant.now(), EventType.PASS),
+            TwoPlayerEvent(UUIDS[2], UUIDS[3], Instant.now(), EventType.PASS),
         )
 
         val expectedStats = MatchStatistics(
@@ -252,7 +247,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика брика записана`() {
         MATCH.events.add(
-            OnePlayerEvent(UUIDS[2], UUIDS[0], Instant.now(), EventType.BRICK),
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.BRICK),
         )
 
         val expectedStats = MatchStatistics(
@@ -282,7 +277,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика пулла записана`() {
         MATCH.events.add(
-            OnePlayerEvent(UUIDS[2], UUIDS[0], Instant.now(), EventType.PULL),
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.PULL),
         )
 
         val expectedStats = MatchStatistics(
@@ -312,7 +307,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перехода владения записана`() {
         MATCH.events.add(
-            OnePlayerEvent(UUIDS[2], UUIDS[0], Instant.now(), EventType.TURNOVER),
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.TURNOVER),
         )
 
         val expectedStats = MatchStatistics(
@@ -342,7 +337,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика дропа записана`() {
         MATCH.events.add(
-            OnePlayerEvent(UUIDS[2], UUIDS[0], Instant.now(), EventType.DROP),
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.DROP),
         )
 
         val expectedStats = MatchStatistics(

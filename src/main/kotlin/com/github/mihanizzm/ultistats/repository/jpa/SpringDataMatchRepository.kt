@@ -4,4 +4,8 @@ import com.github.mihanizzm.ultistats.model.Match
 import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 
-interface SpringDataMatchRepository : JpaRepository<Match, UUID>
+interface SpringDataMatchRepository : JpaRepository<Match, UUID> {
+    fun findByIdAndDeletedAtIsNull(id: UUID): Match?
+    fun findAllByDeletedAtIsNull(): List<Match>
+    fun countByDeletedAtIsNull(): Long
+}
