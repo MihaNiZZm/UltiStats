@@ -36,10 +36,10 @@ class EventServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Событие изменяется`() {
         val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
-        val newEvent = OnePlayerEvent(PLAYERS_1[1].id, now(), EventType.PULL)
+        val newEvent = OnePlayerEvent(PLAYERS_1[1].id, event.occurredAt, EventType.PULL)
 
-        eventService.create(event, MATCH.id)
-        eventService.edit(0, newEvent, MATCH.id)
+        val stored = eventService.create(event, MATCH.id)
+        eventService.update(stored.id, newEvent, MATCH.id)
 
         val match = matchService.getOrThrow(MATCH.id)
         assertEquals(1, match.events.size)
@@ -50,23 +50,23 @@ class EventServiceImplTest : MatchAbstractTest() {
     fun `Получаем исключение при изменении, если события с таким индексом не существует`() {
         val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
 
-        assertThrows<IllegalArgumentException> { eventService.edit(0, event, MATCH.id) }
+        assertThrows<IllegalArgumentException> { eventService.update(java.util.UUID.randomUUID(), event, MATCH.id) }
     }
 
     @Test
     fun `Событие удаляется`() {
         val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
 
-        eventService.create(event, MATCH.id)
-        eventService.remove(0, MATCH.id)
+        val stored = eventService.create(event, MATCH.id)
+        eventService.remove(stored.id, MATCH.id)
 
         val match = matchService.getOrThrow(MATCH.id)
         assertEquals(0, match.events.size)
     }
 
     @Test
-    fun `Получаем исключение при удалении, если события с таким индексом не существует`() {
-        assertThrows<IllegalArgumentException> { eventService.remove(0, MATCH.id) }
+    fun `Удаление отсутствующего события возвращает false`() {
+        assertEquals(false, eventService.remove(java.util.UUID.randomUUID(), MATCH.id))
     }
 
     @Test
@@ -81,6 +81,6 @@ class EventServiceImplTest : MatchAbstractTest() {
 
         events.forEach { eventService.create(it, MATCH.id) }
 
-        assertEquals(events, eventService.getAllEventsOfMatch(MATCH.id))
+        assertEquals(events, eventService.getAllEventsOfMatch(MATCH.id).map { it.event })
     }
 }

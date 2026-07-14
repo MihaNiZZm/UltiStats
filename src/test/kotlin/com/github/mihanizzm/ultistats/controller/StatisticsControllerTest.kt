@@ -13,6 +13,7 @@ import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -47,6 +48,9 @@ class StatisticsControllerTest {
 
     @Autowired
     lateinit var eventService: EventService
+
+    @Autowired
+    lateinit var teamPlayerService: TeamPlayerService
 
     private lateinit var team1: Team
     private lateinit var team2: Team
@@ -142,17 +146,17 @@ class StatisticsControllerTest {
     private fun createTestTeam(name: String): Pair<Team, List<Player>> {
         val teamId = UUID.randomUUID()
         val players = listOf(
-            Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
-            Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
-            Player(UUID.randomUUID(), teamId, 3, "Игрок", "Три"),
+            Player(UUID.randomUUID(), "Игрок", "Один"),
+            Player(UUID.randomUUID(), "Игрок", "Два"),
+            Player(UUID.randomUUID(), "Игрок", "Три"),
         )
         val team = Team(
             id = teamId,
             name = name,
-            playerIds = players.map { it.id }
         )
         teamService.create(team)
         players.forEach { playerService.create(it) }
+        players.forEachIndexed { index, player -> teamPlayerService.add(teamId, player.id, index + 1) }
         return team to players
     }
 

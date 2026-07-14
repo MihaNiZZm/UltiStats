@@ -37,7 +37,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
         for (event in events) {
             var duration = Duration.ZERO
             if (lastEventTime != null) {
-                duration = Duration.between(lastEventTime, event.realTimestamp)
+                duration = Duration.between(lastEventTime, event.occurredAt)
                 totalMatchTime = totalMatchTime.plus(duration)
 
                 if (currentTeamPossessing != null && !isStopped) {
@@ -48,7 +48,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                 }
             }
 
-            lastEventTime = event.realTimestamp
+            lastEventTime = event.occurredAt
 
             when (event.type) {
                 EventType.PASS -> {
@@ -59,14 +59,14 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     currentTeamPossessing = null
                     isStopped = true
                     // Начинаем отсчет времени между поинтами от момента гола
-                    lastBetweenPointsStart = event.realTimestamp
+                    lastBetweenPointsStart = event.occurredAt
                 }
                 EventType.PULL -> {
                     val pullTeam = teamByPlayerId.getValue((event as OnePlayerEvent).player)
                     // Добавляем во время между поинтами только чистый отрезок между окончанием предыдущего поинта
                     // и текущим пуллом, исключая таймауты и халфтайм.
                     val between = if (lastBetweenPointsStart != null) {
-                        Duration.between(lastBetweenPointsStart, event.realTimestamp)
+                        Duration.between(lastBetweenPointsStart, event.occurredAt)
                     } else {
                         duration
                     }
@@ -97,7 +97,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     currentPlayerPossessing = null
                     isStopped = true
                     // Кэллахан завершает поинт
-                    lastBetweenPointsStart = event.realTimestamp
+                    lastBetweenPointsStart = event.occurredAt
                 }
                 EventType.TIMEOUT_START -> {
                     teamOnTimeout = (event as TeamEvent).team
@@ -111,7 +111,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     }
                     // Между поинтами не должно включать время таймаута, поэтому старт переносим на конец таймаута
                     if (lastBetweenPointsStart != null) {
-                        lastBetweenPointsStart = event.realTimestamp
+                        lastBetweenPointsStart = event.occurredAt
                     }
                 }
                 EventType.HALFTIME_START -> {
@@ -124,7 +124,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     timeSpentOnHalftime = timeSpentOnHalftime.plus(duration)
                     // Между поинтами не должно включать время халфтайма, поэтому старт переносим на конец халфтайма
                     if (lastBetweenPointsStart != null) {
-                        lastBetweenPointsStart = event.realTimestamp
+                        lastBetweenPointsStart = event.occurredAt
                     }
                 }
             }

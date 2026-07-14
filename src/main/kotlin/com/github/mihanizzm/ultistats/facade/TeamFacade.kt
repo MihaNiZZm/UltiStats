@@ -8,11 +8,12 @@ import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamDetailResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamListItemResponse
+import com.github.mihanizzm.ultistats.dto.response.TeamPlayerResponse
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.LocalFileStorageService
 import com.github.mihanizzm.ultistats.service.PlayerService
-import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
+import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
@@ -27,148 +28,76 @@ class TeamFacade(
 ) {
     companion object {
         val DEFAULT_SORT = SortParam("name")
-
-        val SORT_FIELD_EXTRACTORS: Map<String, (Team) -> Comparable<*>?> = mapOf(
-            "name" to { it.name },
-        )
+        val SORT_FIELD_EXTRACTORS: Map<String, (Team) -> Comparable<*>?> = mapOf("name" to { it.name })
     }
 
-    fun getAll(): List<TeamDetailResponse> =
-        teamService.getAll().map { team ->
-            val players = playerService.getAllByTeamId(team.id)
-            TeamDetailResponse.from(team, players)
-        }
-
-    fun getAllPaged(
-        page: Int,
-        size: Int,
-        filter: TeamFilterRequest,
-        sortParam: SortParam = DEFAULT_SORT,
-    ): PageResponse<TeamListItemResponse> {
-        val filteredTeams = teamService.findAllFiltered(filter)
-        val totalElements = filteredTeams.size.toLong()
-
-        val sortedTeams = filteredTeams.applySorting(sortParam, SORT_FIELD_EXTRACTORS)
-
-        val content = sortedTeams
-            .drop(page * size)
-            .take(size)
-            .map { TeamListItemResponse.from(it) }
-
-        return PageResponse.of(content, totalElements, page, size)
+    private fun detail(team: Team): TeamDetailResponse {
+        val memberships = teamPlayerService.getByTeamId(team.id)
+        val players = playerService.getAllByIds(memberships.map { it.playerId }).associateBy { it.id }
+        return TeamDetailResponse.from(team, memberships, players)
     }
 
-    fun getById(id: UUID): TeamDetailResponse? {
-        val team = teamService.get(id) ?: return null
-        val players = playerService.getAllByTeamId(team.id)
-        return TeamDetailResponse.from(team, players)
+    fun getAllPaged(page: Int, size: Int, filter: TeamFilterRequest, sortParam: SortParam = DEFAULT_SORT): PageResponse<TeamListItemResponse> {
+        val teams = teamService.findAllFiltered(filter)
+        val content = teams.applySorting(sortParam, SORT_FIELD_EXTRACTORS)
+            .drop(page * size).take(size).map(TeamListItemResponse::from)
+        return PageResponse.of(content, teams.size.toLong(), page, size)
+    }
+
+    fun getById(id: UUID): TeamDetailResponse? = teamService.get(id)?.let(::detail)
+
+    fun getMemberships(id: UUID): List<TeamPlayerResponse>? {
+        if (teamService.get(id) == null) return null
+        return teamPlayerService.getByTeamId(id).map(TeamPlayerResponse::from)
     }
 
     fun create(request: CreateTeamRequest): TeamDetailResponse {
-        val teamId = UUID.randomUUID()
-
-        val team = Team(
-            id = teamId,
-            name = request.name,
-            playerIds = request.playerIds,
-            city = request.city,
-        )
+        val team = Team(UUID.randomUUID(), request.name, request.city)
         teamService.create(team)
-
-        request.playerIds.forEach { playerId ->
-            playerService.get(playerId)?.let { teamPlayerService.add(teamId, playerId) }
-        }
-
-        val players = playerService.getAllByTeamId(teamId)
-        return TeamDetailResponse.from(team, players)
+        return detail(team)
     }
 
     fun update(id: UUID, request: UpdateTeamRequest): TeamDetailResponse? {
-        val existingTeam = teamService.get(id) ?: return null
-
-        // Обновляем teamId у игроков, если playerIds был передан
-        val oldPlayerIds = existingTeam.playerIds
-        val newPlayerIds = request.playerIds ?: existingTeam.playerIds
-
-        // Убираем teamId у игроков, которые были удалены из команды
-        (oldPlayerIds - newPlayerIds).forEach { playerId ->
-            teamPlayerService.remove(id, playerId)
-        }
-
-        // Добавляем teamId у новых игроков
-        (newPlayerIds - oldPlayerIds).forEach { playerId ->
-            playerService.get(playerId)?.let { teamPlayerService.add(id, playerId) }
-        }
-
-        val updatedTeam = existingTeam.copy(
-            name = request.name ?: existingTeam.name,
-            playerIds = newPlayerIds,
-            city = request.city ?: existingTeam.city,
+        val existing = teamService.get(id) ?: return null
+        val updated = existing.copy(
+            name = request.name ?: existing.name,
+            city = request.city ?: existing.city,
         )
-        teamService.update(updatedTeam)
-
-        val players = playerService.getAllByTeamId(id)
-        return TeamDetailResponse.from(updatedTeam, players)
+        teamService.update(updated)
+        return detail(updated)
     }
 
     fun delete(id: UUID): Boolean {
-        val team = teamService.get(id) ?: return false
-
-        team.playerIds.forEach { playerId ->
-            teamPlayerService.remove(id, playerId)
-        }
-
+        if (teamService.get(id) == null) return false
+        teamPlayerService.getByTeamId(id).forEach { teamPlayerService.remove(id, it.playerId) }
         teamService.delete(id)
         return true
     }
 
-    fun addPlayerToTeam(teamId: UUID, playerId: UUID, number: Int? = null): TeamDetailResponse? {
-        val team = teamService.get(teamId) ?: return null
-        val player = playerService.get(playerId) ?: return null
-
-        if (team.hasPlayer(playerId)) {
-            if (number != null) teamPlayerService.add(teamId, playerId, number)
-            val players = playerService.getAllByTeamId(teamId)
-            return TeamDetailResponse.from(team, players)
-        }
-
-        teamPlayerService.add(teamId, player.id, number)
-        val updatedTeam = team.copy(playerIds = team.playerIds + playerId)
-
-        val players = playerService.getAllByTeamId(teamId)
-        return TeamDetailResponse.from(updatedTeam, players)
+    fun putPlayer(teamId: UUID, playerId: UUID, number: Int?): TeamPlayerResponse? {
+        require(number == null || number >= 0) { "Player number cannot be negative" }
+        if (teamService.get(teamId) == null || playerService.get(playerId) == null) return null
+        return TeamPlayerResponse.from(teamPlayerService.add(teamId, playerId, number))
     }
 
-    fun removePlayerFromTeam(teamId: UUID, playerId: UUID): TeamDetailResponse? {
-        val team = teamService.get(teamId) ?: return null
-        if (!team.hasPlayer(playerId)) return null
-
-        teamPlayerService.remove(teamId, playerId)
-        val updatedTeam = team.copy(playerIds = team.playerIds - playerId)
-
-        val players = playerService.getAllByTeamId(teamId)
-        return TeamDetailResponse.from(updatedTeam, players)
+    fun removePlayer(teamId: UUID, playerId: UUID): Boolean {
+        if (teamService.get(teamId) == null || playerService.get(playerId) == null) return false
+        return teamPlayerService.remove(teamId, playerId)
     }
 
     fun uploadPhoto(teamId: UUID, file: MultipartFile): PhotoUrlResponse? {
         val team = teamService.get(teamId) ?: return null
         val url = localFileStorageService.upload(file) ?: return null
-
-        val newTeam = team.copy(photoUrl = url)
-        teamService.update(newTeam)
+        teamService.update(team.copy(photoUrl = url))
         return PhotoUrlResponse(url)
     }
 
-    fun getPhotoUrl(teamId: UUID): PhotoUrlResponse? {
-        val url = teamService.get(teamId)?.photoUrl ?: return null
-        return teamService.get(teamId)?.let { PhotoUrlResponse(url) }
-    }
+    fun getPhotoUrl(teamId: UUID): PhotoUrlResponse? = teamService.get(teamId)?.photoUrl?.let(::PhotoUrlResponse)
 
     fun deletePhotoUrl(teamId: UUID): PhotoUrlResponse? {
         val team = teamService.get(teamId) ?: return null
-        val url = team.photoUrl ?: return PhotoUrlResponse(null)
-        val newTeam = team.copy(photoUrl = null)
-        teamService.update(newTeam)
-        return PhotoUrlResponse(url)
+        val oldUrl = team.photoUrl
+        teamService.update(team.copy(photoUrl = null))
+        return PhotoUrlResponse(oldUrl)
     }
 }

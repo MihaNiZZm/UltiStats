@@ -2,7 +2,6 @@ package com.github.mihanizzm.ultistats.service
 
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.model.Team
-import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamPlayerRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamRepository
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -13,11 +12,10 @@ import java.util.UUID
 @Suppress("unused")
 class TeamServiceImpl(
     private val teamRepository: SpringDataTeamRepository,
-    private val teamPlayerRepository: SpringDataTeamPlayerRepository,
 ) : TeamService {
     private val log = LoggerFactory.getLogger(TeamServiceImpl::class.java)
 
-    override fun get(teamId: UUID): Team? = teamRepository.findByIdAndDeletedAtIsNull(teamId)?.withPlayerIds()
+    override fun get(teamId: UUID): Team? = teamRepository.findByIdAndDeletedAtIsNull(teamId)
 
     override fun create(team: Team) {
         teamRepository.save(team)
@@ -31,13 +29,13 @@ class TeamServiceImpl(
         get(teamId)?.let { teamRepository.save(it.copy(deletedAt = Instant.now())) }
     }
 
-    override fun getAll(): List<Team> = teamRepository.findAllByDeletedAtIsNull().withPlayerIds()
+    override fun getAll(): List<Team> = teamRepository.findAllByDeletedAtIsNull()
 
     override fun getAllInList(ids: List<UUID>): List<Team> =
-        teamRepository.findAllByIdInAndDeletedAtIsNull(ids).withPlayerIds()
+        teamRepository.findAllByIdInAndDeletedAtIsNull(ids)
 
     override fun getAllInListIncludingDeleted(ids: List<UUID>): List<Team> =
-        teamRepository.findAllById(ids).toList().withPlayerIds()
+        teamRepository.findAllById(ids).toList()
 
     override fun findAllFiltered(filter: TeamFilterRequest): List<Team> {
         val teams = if (filter.name != null) {
@@ -45,7 +43,7 @@ class TeamServiceImpl(
         } else {
             teamRepository.findAllByDeletedAtIsNull()
         }
-        return teams.withPlayerIds()
+        return teams
     }
 
     override fun count(): Long = teamRepository.countByDeletedAtIsNull()
@@ -56,9 +54,4 @@ class TeamServiceImpl(
         } else {
             teamRepository.countByDeletedAtIsNull()
         }
-
-    private fun List<Team>.withPlayerIds(): List<Team> = map { it.withPlayerIds() }
-
-    private fun Team.withPlayerIds(): Team =
-        copy(playerIds = teamPlayerRepository.findAllByTeamIdAndDeletedAtIsNull(id).map { it.playerId })
 }

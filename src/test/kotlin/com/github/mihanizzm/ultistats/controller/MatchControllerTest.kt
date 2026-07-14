@@ -10,6 +10,7 @@ import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -40,6 +41,9 @@ class MatchControllerTest {
 
     @Autowired
     lateinit var playerService: PlayerService
+
+    @Autowired
+    lateinit var teamPlayerService: TeamPlayerService
 
     @BeforeEach
     fun setup() {
@@ -341,16 +345,16 @@ class MatchControllerTest {
     private fun createTestTeam(name: String): Team {
         val teamId = UUID.randomUUID()
         val players = listOf(
-            Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
-            Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
+            Player(UUID.randomUUID(), "Игрок", "Один"),
+            Player(UUID.randomUUID(), "Игрок", "Два"),
         )
         val team = Team(
             id = teamId,
             name = name,
-            playerIds = players.map { it.id }
         )
         teamService.create(team)
         players.forEach { playerService.create(it) }
+        players.forEachIndexed { index, player -> teamPlayerService.add(teamId, player.id, index + 1) }
         return team
     }
 }

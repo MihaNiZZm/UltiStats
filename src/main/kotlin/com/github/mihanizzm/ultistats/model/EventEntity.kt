@@ -22,7 +22,7 @@ import java.util.UUID
  * stays separate so database-only identity, ordering, and soft-deletion fields do not
  * become part of the event API.
  */
-class EventEntity(
+data class EventEntity(
     @Id
     val id: UUID,
 
@@ -72,16 +72,16 @@ class EventEntity(
     companion object {
         fun fromDomain(id: UUID, matchId: UUID, sequenceNumber: Int, event: Event): EventEntity = when (event) {
             is OnePlayerEvent -> EventEntity(
-                id, matchId, sequenceNumber, event.type, event.realTimestamp, fromPlayerId = event.player,
+                id, matchId, sequenceNumber, event.type, event.occurredAt, fromPlayerId = event.player,
             )
             is TwoPlayerEvent -> EventEntity(
-                id, matchId, sequenceNumber, event.type, event.realTimestamp,
+                id, matchId, sequenceNumber, event.type, event.occurredAt,
                 fromPlayerId = event.fromPlayer, toPlayerId = event.toPlayer,
             )
             is TeamEvent -> EventEntity(
-                id, matchId, sequenceNumber, event.type, event.realTimestamp, teamId = event.team,
+                id, matchId, sequenceNumber, event.type, event.occurredAt, teamId = event.team,
             )
-            is SystemEvent -> EventEntity(id, matchId, sequenceNumber, event.type, event.realTimestamp)
+            is SystemEvent -> EventEntity(id, matchId, sequenceNumber, event.type, event.occurredAt)
         }
     }
 }

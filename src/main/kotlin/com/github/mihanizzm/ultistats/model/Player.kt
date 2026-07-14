@@ -4,21 +4,14 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import jakarta.persistence.Transient
 import java.time.Instant
 import java.util.UUID
 
 @Entity
 @Table(name = "players")
-class Player(
+data class Player(
     @Id
     val id: UUID,
-
-    @Transient
-    val teamId: UUID?,
-
-    @Transient
-    val number: Int?,
 
     @Column(name = "first_name", nullable = false, length = 255)
     val firstName: String,
@@ -33,10 +26,8 @@ class Player(
     val deletedAt: Instant? = null,
 ) {
     companion object {
-        fun unknown(teamId: UUID) = Player(
+        fun unknown() = Player(
             id = UUID.randomUUID(),
-            teamId = teamId,
-            number = null,
             firstName = "N/A",
             lastName = "N/A",
         )

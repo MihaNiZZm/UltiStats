@@ -1,14 +1,12 @@
 package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.mihanizzm.ultistats.dto.request.CreateEventRequest
-import com.github.mihanizzm.ultistats.dto.request.UpdateEventRequest
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
-import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
+import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -17,280 +15,121 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
-import java.time.Instant
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.UUID
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Suppress("NonAsciiCharacters")
 class EventControllerTest {
-    @Autowired
-    lateinit var mockMvc: MockMvc
+    @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var matchService: MatchService
+    @Autowired lateinit var teamService: TeamService
+    @Autowired lateinit var playerService: PlayerService
+    @Autowired lateinit var teamPlayerService: TeamPlayerService
 
-    @Autowired
-    lateinit var objectMapper: ObjectMapper
-
-    @Autowired
-    lateinit var matchService: MatchService
-
-    @Autowired
-    lateinit var teamService: TeamService
-
-    @Autowired
-    lateinit var playerService: PlayerService
-
+    private lateinit var match: Match
     private lateinit var team1: Team
     private lateinit var team2: Team
-    private lateinit var players1: List<Player>
-    private lateinit var players2: List<Player>
-    private lateinit var match: Match
+    private lateinit var player1: Player
+    private lateinit var player2: Player
+    private lateinit var opponent: Player
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         matchService.getAll().forEach { matchService.delete(it.id) }
         teamService.getAll().forEach { teamService.delete(it.id) }
         playerService.getAll().forEach { playerService.delete(it.id) }
-
-        val (t1, p1) = createTestTeam("Команда 1")
-        val (t2, p2) = createTestTeam("Команда 2")
-        team1 = t1
-        team2 = t2
-        players1 = p1
-        players2 = p2
-        match = createTestMatch(team1, team2)
-    }
-
-    @Test
-    fun `Создание события TURNOVER возвращает eventId`() {
-        val player = players1.first()
-        val request = CreateEventRequest(
-            type = EventType.TURNOVER,
-            timestamp = Instant.now(),
-            playerId = player.id,
-        )
-
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.eventId").isNotEmpty)
-    }
-
-    @Test
-    fun `Создание события PASS возвращает eventId`() {
-        val player1 = players1[0]
-        val player2 = players1[1]
-
-        // Сначала подбор диска
-        val turnoverRequest = CreateEventRequest(
-            type = EventType.TURNOVER,
-            timestamp = Instant.now(),
-            playerId = player1.id,
-        )
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(turnoverRequest))
-        )
-
-        // Затем пас
-        val passRequest = CreateEventRequest(
-            type = EventType.PASS,
-            timestamp = Instant.now(),
-            playerId = player1.id,
-            toPlayerId = player2.id,
-        )
-
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(passRequest))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.eventId").isNotEmpty)
-    }
-
-    @Test
-    fun `Создание события GOAL возвращает eventId`() {
-        val player1 = players1[0]
-        val player2 = players1[1]
-
-        // Подбор
-        createEvent(EventType.TURNOVER, player1.id)
-
-        // Гол
-        val goalRequest = CreateEventRequest(
-            type = EventType.GOAL,
-            timestamp = Instant.now(),
-            playerId = player1.id,
-            toPlayerId = player2.id,
-        )
-
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(goalRequest))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.eventId").isNotEmpty)
-    }
-
-    @Test
-    fun `Получение событий матча возвращает список`() {
-        val fromPlayer = players1[0]
-        val toPlayer = players1[1]
-        createEvent(EventType.TURNOVER, fromPlayer.id)
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(CreateEventRequest(
-                    type = EventType.PASS,
-                    timestamp = Instant.now(),
-                    playerId = fromPlayer.id,
-                    toPlayerId = toPlayer.id,
-                )))
-        ).andExpect(status().isCreated)
-
-        mockMvc.perform(get("/api/v1/matches/${match.id}/events"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].player").value(fromPlayer.id.toString()))
-            .andExpect(jsonPath("$[0].team").doesNotExist())
-            .andExpect(jsonPath("$[1].fromPlayer").value(fromPlayer.id.toString()))
-            .andExpect(jsonPath("$[1].toPlayer").value(toPlayer.id.toString()))
-            .andExpect(jsonPath("$[1].fromTeam").doesNotExist())
-            .andExpect(jsonPath("$[1].toTeam").doesNotExist())
-    }
-
-    @Test
-    fun `Удаление события возвращает eventId`() {
-        val player1 = players1[0]
-        val player2 = players1[1]
-
-        // Подбор
-        createEvent(EventType.TURNOVER, player1.id)
-
-        // Пас
-        val passRequest = CreateEventRequest(
-            type = EventType.PASS,
-            timestamp = Instant.now(),
-            playerId = player1.id,
-            toPlayerId = player2.id,
-        )
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(passRequest))
-        )
-
-        // Удаляем пас (индекс 1)
-        mockMvc.perform(delete("/api/v1/matches/${match.id}/events/1"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.eventId").isNotEmpty)
-    }
-
-    @Test
-    fun `Создание события для несуществующего матча возвращает 404`() {
-        val request = CreateEventRequest(
-            type = EventType.PULL,
-            timestamp = Instant.now(),
-            playerId = players1.first().id,
-        )
-
-        mockMvc.perform(
-            post("/api/v1/matches/${UUID.randomUUID()}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `Частичное обновление события (PUT только timestamp) работает`() {
-        val player = players1.first()
-
-        // Создаём событие
-        createEvent(EventType.TURNOVER, player.id)
-
-        val newTimestamp = Instant.now().plusSeconds(100)
-        val updateRequest = UpdateEventRequest(timestamp = newTimestamp)
-
-        mockMvc.perform(
-            put("/api/v1/matches/${match.id}/events/0")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest))
-        )
-            .andExpect(status().isOk)
-    }
-
-    @Test
-    fun `Частичное обновление события (PUT только type) работает`() {
-        val player = players1.first()
-
-        // Создаём событие TURNOVER
-        createEvent(EventType.TURNOVER, player.id)
-
-        val updateRequest = UpdateEventRequest(type = EventType.DROP)
-
-        mockMvc.perform(
-            put("/api/v1/matches/${match.id}/events/0")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest))
-        )
-            .andExpect(status().isOk)
-    }
-
-    @Test
-    fun `Частичное обновление несуществующего события возвращает 404`() {
-        val updateRequest = UpdateEventRequest(timestamp = Instant.now())
-
-        mockMvc.perform(
-            put("/api/v1/matches/${match.id}/events/999")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest))
-        )
-            .andExpect(status().isNotFound)
-    }
-
-    private fun createEvent(type: EventType, playerId: UUID) {
-        val request = CreateEventRequest(
-            type = type,
-            timestamp = Instant.now(),
-            playerId = playerId,
-        )
-        mockMvc.perform(
-            post("/api/v1/matches/${match.id}/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-    }
-
-    private fun createTestTeam(name: String): Pair<Team, List<Player>> {
-        val teamId = UUID.randomUUID()
-        val players = listOf(
-            Player(UUID.randomUUID(), teamId, 1, "Игрок", "Один"),
-            Player(UUID.randomUUID(), teamId, 2, "Игрок", "Два"),
-        )
-        val team = Team(
-            id = teamId,
-            name = name,
-            playerIds = players.map { it.id }
-        )
-        teamService.create(team)
-        players.forEach { playerService.create(it) }
-        return team to players
-    }
-
-    private fun createTestMatch(team1: Team, team2: Team): Match {
-        val match = Match(
-            id = UUID.randomUUID(),
-            teamIds = listOf(team1.id, team2.id),
-        )
+        team1 = Team(UUID.randomUUID(), "One")
+        team2 = Team(UUID.randomUUID(), "Two")
+        teamService.create(team1); teamService.create(team2)
+        player1 = Player(UUID.randomUUID(), "First", "Player")
+        player2 = Player(UUID.randomUUID(), "Second", "Player")
+        opponent = Player(UUID.randomUUID(), "Other", "Player")
+        listOf(player1, player2, opponent).forEach(playerService::create)
+        teamPlayerService.add(team1.id, player1.id, 1)
+        teamPlayerService.add(team1.id, player2.id, 2)
+        teamPlayerService.add(team2.id, opponent.id, 3)
+        match = Match(UUID.randomUUID(), listOf(team1.id, team2.id))
         matchService.create(match)
-        return match
     }
+
+    @Test
+    fun `one-player event has only its category fields`() {
+        mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id)))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.id").isNotEmpty)
+            .andExpect(jsonPath("$.sequenceNumber").value(1))
+            .andExpect(jsonPath("$.playerId").value(player1.id.toString()))
+            .andExpect(jsonPath("$.teamId").doesNotExist())
+            .andExpect(jsonPath("$._eventClass").doesNotExist())
+    }
+
+    @Test
+    fun `two-player request rejects players from wrong team for pass`() {
+        mockMvc.perform(postEvent(mapOf(
+            "type" to "PASS", "occurredAt" to "2026-07-14T10:00:00Z",
+            "fromPlayerId" to player1.id, "toPlayerId" to opponent.id,
+        ))).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `team and system event schemas deserialize by type`() {
+        mockMvc.perform(postEvent(mapOf("type" to "TIMEOUT_START", "occurredAt" to "2026-07-14T10:00:00Z", "teamId" to team1.id)))
+            .andExpect(status().isCreated).andExpect(jsonPath("$.teamId").value(team1.id.toString()))
+        mockMvc.perform(postEvent(mapOf("type" to "HALFTIME_START", "occurredAt" to "2026-07-14T10:01:00Z")))
+            .andExpect(status().isCreated).andExpect(jsonPath("$.teamId").doesNotExist())
+    }
+
+    @Test
+    fun `event is read patched and deleted by UUID`() {
+        val created = mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id)))
+            .andReturn().response.contentAsString
+        val eventId = objectMapper.readTree(created).get("id").asText()
+
+        mockMvc.perform(get("/api/v1/matches/${match.id}/events/$eventId"))
+            .andExpect(status().isOk).andExpect(jsonPath("$.playerId").value(player1.id.toString()))
+        mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$eventId")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("type" to "TURNOVER", "playerId" to player2.id))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.playerId").value(player2.id.toString()))
+            .andExpect(jsonPath("$.occurredAt").value("2026-07-14T10:00:00Z"))
+        mockMvc.perform(delete("/api/v1/matches/${match.id}/events/$eventId"))
+            .andExpect(status().isNoContent)
+        mockMvc.perform(get("/api/v1/matches/${match.id}/events/$eventId")).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `event type cannot change and system event cannot be patched`() {
+        val playerEvent = createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id))
+        mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$playerEvent")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("type" to "DROP", "playerId" to player1.id))))
+            .andExpect(status().isBadRequest)
+
+        val systemEvent = createAndGetId(mapOf("type" to "HALFTIME_START", "occurredAt" to "2026-07-14T10:01:00Z"))
+        mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$systemEvent")
+            .contentType(MediaType.APPLICATION_JSON).content("""{"type":"HALFTIME_START"}"""))
+            .andExpect(status().isMethodNotAllowed)
+    }
+
+    @Test
+    fun `creation rejects timestamp before previous event`() {
+        createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:01:00Z", "playerId" to player1.id))
+        mockMvc.perform(postEvent(mapOf("type" to "DROP", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id)))
+            .andExpect(status().isBadRequest)
+    }
+
+    private fun postEvent(body: Map<String, Any>) = post("/api/v1/matches/${match.id}/events")
+        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))
+
+    private fun createAndGetId(body: Map<String, Any>): String = objectMapper.readTree(
+        mockMvc.perform(postEvent(body)).andExpect(status().isCreated).andReturn().response.contentAsString
+    ).get("id").asText()
 }
