@@ -15,9 +15,9 @@ class SortingIntegrationTest {
     @Test
     fun `Сортировка игроков по убыванию фамилии работает`() {
         val players = listOf(
-            Player(UUID.randomUUID(), null, 1, "Игрок", "Альфа"),
-            Player(UUID.randomUUID(), null, 2, "Игрок", "Бета"),
-            Player(UUID.randomUUID(), null, 3, "Игрок", "Гамма"),
+            Player(UUID.randomUUID(), "Игрок", "Альфа"),
+            Player(UUID.randomUUID(), "Игрок", "Бета"),
+            Player(UUID.randomUUID(), "Игрок", "Гамма"),
         )
 
         val sortParam = SortParam("lastName", SortDirection.DESC)

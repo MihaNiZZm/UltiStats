@@ -5,9 +5,11 @@ import com.github.mihanizzm.ultistats.dto.common.SortParam
 import com.github.mihanizzm.ultistats.dto.request.CreateTeamRequest
 import com.github.mihanizzm.ultistats.dto.request.TeamFilterRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateTeamRequest
+import com.github.mihanizzm.ultistats.dto.request.UpsertTeamPlayerRequest
 import com.github.mihanizzm.ultistats.dto.response.PhotoUrlResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamDetailResponse
 import com.github.mihanizzm.ultistats.dto.response.TeamListItemResponse
+import com.github.mihanizzm.ultistats.dto.response.TeamPlayerResponse
 import com.github.mihanizzm.ultistats.facade.TeamFacade
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
@@ -78,26 +81,36 @@ class TeamController(
         if (teamFacade.delete(id)) ResponseEntity.noContent().build()
         else ResponseEntity.notFound().build()
 
-    @PostMapping("/{teamId}/players/{playerId}")
-    @Operation(summary = "Добавить существующего игрока в команду")
-    fun addPlayer(
+    @GetMapping("/{teamId}/players")
+    @Operation(summary = "Получить состав команды")
+    fun getPlayers(@PathVariable teamId: UUID): ResponseEntity<List<TeamPlayerResponse>> =
+        teamFacade.getMemberships(teamId)?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @PutMapping("/{teamId}/players/{playerId}")
+    @Operation(summary = "Создать или обновить членство игрока в команде")
+    fun putPlayer(
         @PathVariable teamId: UUID,
         @PathVariable playerId: UUID,
-        @RequestParam(required = false) number: Int?,
-    ): ResponseEntity<TeamDetailResponse> =
-        teamFacade.addPlayerToTeam(teamId, playerId, number)
-            ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+        @RequestBody request: UpsertTeamPlayerRequest,
+    ): ResponseEntity<TeamPlayerResponse> = try {
+        teamFacade.putPlayer(teamId, playerId, request.number)
+            ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
+    } catch (_: DataIntegrityViolationException) {
+        ResponseEntity.status(HttpStatus.CONFLICT).build()
+    } catch (_: IllegalArgumentException) {
+        ResponseEntity.badRequest().build()
+    }
 
     @DeleteMapping("/{teamId}/players/{playerId}")
     @Operation(summary = "Убрать игрока из команды")
     fun removePlayer(
         @PathVariable teamId: UUID,
         @PathVariable playerId: UUID
-    ): ResponseEntity<TeamDetailResponse> =
-        teamFacade.removePlayerFromTeam(teamId, playerId)
-            ?.let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.notFound().build()
+    ): ResponseEntity<Unit> =
+        if (teamFacade.removePlayer(teamId, playerId)) ResponseEntity.noContent().build()
+        else ResponseEntity.notFound().build()
 
     @PostMapping("/{teamId}/uploadPhoto", consumes =
     [MediaType.MULTIPART_FORM_DATA_VALUE])

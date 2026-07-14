@@ -10,6 +10,7 @@ import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -32,6 +33,9 @@ abstract class MatchAbstractTest {
 
     @Autowired
     lateinit var playerService: PlayerService
+
+    @Autowired
+    lateinit var teamPlayerService: TeamPlayerService
 
     companion object {
         const val START_DATE = "2025-11-23T12:00:00Z"
@@ -56,36 +60,26 @@ abstract class MatchAbstractTest {
         val PLAYERS_1 = listOf(
             Player(
                 UUIDS[2],
-                UUIDS[0],
-                22,
                 "Михаил",
                 "Сартаков",
             ),
             Player(
                 UUIDS[3],
-                UUIDS[0],
-                71,
                 "Николай",
                 "Вихорев",
             ),
             Player(
                 UUIDS[4],
-                UUIDS[0],
-                11,
                 "Денис",
                 "Братчиков",
             ),
             Player(
                 UUIDS[5],
-                UUIDS[0],
-                73,
                 "Валерия",
                 "Сердюк",
             ),
             Player(
                 UUIDS[6],
-                UUIDS[0],
-                69,
                 "Олег",
                 "Судоплатов",
             ),
@@ -94,36 +88,26 @@ abstract class MatchAbstractTest {
         val PLAYERS_2 = listOf(
             Player(
                 UUIDS[7],
-                UUIDS[1],
-                1,
                 "Алексей",
                 "Иванов",
             ),
             Player(
                 UUIDS[8],
-                UUIDS[1],
-                2,
                 "Иван",
                 "Петров",
             ),
             Player(
                 UUIDS[9],
-                UUIDS[1],
-                5,
                 "Сергей",
                 "Тришкин",
             ),
             Player(
                 UUIDS[10],
-                UUIDS[1],
-                3,
                 "Ксения",
                 "Важева",
             ),
             Player(
                 UUIDS[11],
-                UUIDS[1],
-                4,
                 "Андрей",
                 "Туркин",
             ),
@@ -132,12 +116,10 @@ abstract class MatchAbstractTest {
         val TEAM_1 = Team(
             UUIDS[0],
             "НИИ ТУДА",
-            PLAYERS_1.map { it.id },
         )
         val TEAM_2 = Team(
             UUIDS[1],
             "НИИ СЮДА",
-            PLAYERS_2.map { it.id },
         )
 
         val MATCH = Match(
@@ -158,6 +140,8 @@ abstract class MatchAbstractTest {
 
         PLAYERS_1.forEach { playerService.create(it) }
         PLAYERS_2.forEach { playerService.create(it) }
+        PLAYERS_1.forEachIndexed { index, player -> teamPlayerService.add(TEAM_1.id, player.id, index + 1) }
+        PLAYERS_2.forEachIndexed { index, player -> teamPlayerService.add(TEAM_2.id, player.id, index + 1) }
 
         matchService.create(MATCH)
     }

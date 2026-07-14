@@ -15,12 +15,10 @@ class PlayerServiceImpl(
 ) : PlayerService {
     private val log = LoggerFactory.getLogger(PlayerServiceImpl::class.java)
 
-    override fun get(playerId: UUID): Player? =
-        playerRepository.findByIdAndDeletedAtIsNull(playerId)?.withPrimaryMembership()
+    override fun get(playerId: UUID): Player? = playerRepository.findByIdAndDeletedAtIsNull(playerId)
 
     override fun create(player: Player) {
         playerRepository.save(player)
-        player.teamId?.let { teamPlayerService.add(it, player.id, player.number) }
     }
 
     override fun update(player: Player) {
@@ -31,34 +29,25 @@ class PlayerServiceImpl(
         get(playerId)?.let { playerRepository.save(it.copy(deletedAt = Instant.now())) }
     }
 
-    override fun getAll(): List<Player> = playerRepository.findAllByDeletedAtIsNull().map { it.withPrimaryMembership() }
+    override fun getAll(): List<Player> = playerRepository.findAllByDeletedAtIsNull()
 
     override fun getAllByIds(ids: List<UUID>): List<Player> =
-        playerRepository.findAllByIdInAndDeletedAtIsNull(ids).map { it.withPrimaryMembership() }
+        playerRepository.findAllByIdInAndDeletedAtIsNull(ids)
 
     override fun getAllByTeamId(teamId: UUID): List<Player> {
-        val memberships = teamPlayerService.getByTeamId(teamId).associateBy { it.playerId }
-        return playerRepository.findAllByIdInAndDeletedAtIsNull(memberships.keys.toList()).map { player ->
-            player.copy(teamId = teamId, number = memberships[player.id]?.number)
-        }
+        val playerIds = teamPlayerService.getByTeamId(teamId).map { it.playerId }
+        return playerRepository.findAllByIdInAndDeletedAtIsNull(playerIds)
     }
 
     override fun findAllFiltered(filter: PlayerFilterRequest): List<Player> {
         val players = playerRepository.findFiltered(filter.name)
-        if (filter.teamId == null) return players.map { it.withPrimaryMembership() }
-        val memberships = teamPlayerService.getByTeamId(filter.teamId).associateBy { it.playerId }
-        return players.filter { it.id in memberships }.map {
-            it.copy(teamId = filter.teamId, number = memberships[it.id]?.number)
-        }
+        if (filter.teamId == null) return players
+        val playerIds = teamPlayerService.getByTeamId(filter.teamId).mapTo(mutableSetOf()) { it.playerId }
+        return players.filter { it.id in playerIds }
     }
 
     override fun count(): Long = playerRepository.countByDeletedAtIsNull()
 
     override fun countFiltered(filter: PlayerFilterRequest): Long =
         findAllFiltered(filter).size.toLong()
-
-    private fun Player.withPrimaryMembership(): Player {
-        val membership = teamPlayerService.getByPlayerId(id).firstOrNull() ?: return this
-        return copy(teamId = membership.teamId, number = membership.number)
-    }
 }

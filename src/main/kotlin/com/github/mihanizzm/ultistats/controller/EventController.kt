@@ -21,11 +21,21 @@ class EventController(
 ) {
     @GetMapping
     @Operation(summary = "Получить все события матча")
-    fun getAll(@PathVariable matchId: UUID): ResponseEntity<List<Event>> =
+    fun getAll(@PathVariable matchId: UUID): ResponseEntity<List<EventResponse>> =
         when (val result = eventFacade.getAll(matchId)) {
             is EventResult.EventList -> ResponseEntity.ok(result.events)
             else -> ResponseEntity.notFound().build()
         }
+
+    @GetMapping("/{eventId}")
+    @Operation(summary = "Получить событие по ID")
+    fun get(
+        @PathVariable matchId: UUID,
+        @PathVariable eventId: UUID,
+    ): ResponseEntity<EventResponse> = when (val result = eventFacade.get(matchId, eventId)) {
+        is EventResult.Success -> ResponseEntity.ok(result.response)
+        else -> ResponseEntity.notFound().build()
+    }
 
     @PostMapping
     @Operation(summary = "Создать событие")
@@ -40,28 +50,29 @@ class EventController(
             else -> ResponseEntity.internalServerError().build()
         }
 
-    @PutMapping("/{index}")
-    @Operation(summary = "Изменить событие по индексу (частичное обновление)")
+    @PatchMapping("/{eventId}")
+    @Operation(summary = "Исправить участников события")
     fun update(
         @PathVariable matchId: UUID,
-        @PathVariable index: Int,
+        @PathVariable eventId: UUID,
         @RequestBody request: UpdateEventRequest
     ): ResponseEntity<EventResponse> =
-        when (val result = eventFacade.edit(matchId, index, request)) {
+        when (val result = eventFacade.edit(matchId, eventId, request)) {
             is EventResult.Success -> ResponseEntity.ok(result.response)
             is EventResult.NotFound -> ResponseEntity.notFound().build()
             is EventResult.BadRequest -> ResponseEntity.badRequest().build()
+            is EventResult.MethodNotAllowed -> ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build()
             else -> ResponseEntity.internalServerError().build()
         }
 
-    @DeleteMapping("/{index}")
-    @Operation(summary = "Удалить событие по индексу")
+    @DeleteMapping("/{eventId}")
+    @Operation(summary = "Удалить событие по ID")
     fun delete(
         @PathVariable matchId: UUID,
-        @PathVariable index: Int
-    ): ResponseEntity<EventResponse> =
-        when (val result = eventFacade.delete(matchId, index)) {
-            is EventResult.Success -> ResponseEntity.ok(result.response)
+        @PathVariable eventId: UUID
+    ): ResponseEntity<Unit> =
+        when (eventFacade.delete(matchId, eventId)) {
+            is EventResult.Deleted -> ResponseEntity.noContent().build()
             is EventResult.NotFound -> ResponseEntity.notFound().build()
             else -> ResponseEntity.internalServerError().build()
         }

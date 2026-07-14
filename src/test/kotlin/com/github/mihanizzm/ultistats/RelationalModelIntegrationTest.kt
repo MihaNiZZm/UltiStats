@@ -1,6 +1,6 @@
 package com.github.mihanizzm.ultistats
 
-import com.github.mihanizzm.ultistats.dto.request.CreateEventRequest
+import com.github.mihanizzm.ultistats.dto.request.OnePlayerEventRequest
 import com.github.mihanizzm.ultistats.factory.EventFactory
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
@@ -45,15 +45,17 @@ class RelationalModelIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        firstTeam = Team(UUID.randomUUID(), "First", emptyList())
-        secondTeam = Team(UUID.randomUUID(), "Second", emptyList())
+        firstTeam = Team(UUID.randomUUID(), "First")
+        secondTeam = Team(UUID.randomUUID(), "Second")
         teamService.create(firstTeam)
         teamService.create(secondTeam)
 
-        firstPlayer = Player(UUID.randomUUID(), firstTeam.id, 7, "First", "Player")
-        secondPlayer = Player(UUID.randomUUID(), firstTeam.id, 11, "Second", "Player")
+        firstPlayer = Player(UUID.randomUUID(), "First", "Player")
+        secondPlayer = Player(UUID.randomUUID(), "Second", "Player")
         playerService.create(firstPlayer)
         playerService.create(secondPlayer)
+        teamPlayerService.add(firstTeam.id, firstPlayer.id, 7)
+        teamPlayerService.add(firstTeam.id, secondPlayer.id, 11)
 
         match = Match(UUID.randomUUID(), listOf(firstTeam.id, secondTeam.id))
         matchService.create(match)
@@ -61,7 +63,7 @@ class RelationalModelIntegrationTest {
 
     @Test
     fun `player number is unique inside a team`() {
-        val anotherPlayer = Player(UUID.randomUUID(), null, null, "Another", "Player")
+        val anotherPlayer = Player(UUID.randomUUID(), "Another", "Player")
         playerService.create(anotherPlayer)
 
         assertThrows<DataIntegrityViolationException> {
@@ -97,19 +99,20 @@ class RelationalModelIntegrationTest {
         eventService.create(goal, match.id)
         assertEquals(1, matchService.getOrThrow(match.id).teamScores.single { it.teamId == firstTeam.id }.score)
 
-        eventService.remove(0, match.id)
+        val stored = eventService.getAllEventsOfMatch(match.id).single()
+        eventService.remove(stored.id, match.id)
         assertEquals(0, matchService.getOrThrow(match.id).teamScores.single { it.teamId == firstTeam.id }.score)
     }
 
     @Test
     fun `player added after match creation is rejected by event factory`() {
-        val latePlayer = Player(UUID.randomUUID(), firstTeam.id, 21, "Late", "Player")
+        val latePlayer = Player(UUID.randomUUID(), "Late", "Player")
         playerService.create(latePlayer)
 
         val event = eventFactory.createFromRequest(
-            CreateEventRequest(
+            OnePlayerEventRequest(
                 type = EventType.TURNOVER,
-                timestamp = Instant.parse("2026-07-13T12:00:00Z"),
+                occurredAt = Instant.parse("2026-07-13T12:00:00Z"),
                 playerId = latePlayer.id,
             ),
             match.id,

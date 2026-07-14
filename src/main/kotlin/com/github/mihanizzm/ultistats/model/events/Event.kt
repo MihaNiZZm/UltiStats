@@ -12,6 +12,6 @@ import java.time.Instant
     JsonSubTypes.Type(value = SystemEvent::class, name = "SystemEvent"),
 )
 sealed interface Event {
-    val realTimestamp: Instant
+    val occurredAt: Instant
     val type: EventType
 }
