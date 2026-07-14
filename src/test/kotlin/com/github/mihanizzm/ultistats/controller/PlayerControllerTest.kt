@@ -80,4 +80,19 @@ class PlayerControllerTest {
             .andExpect(jsonPath("$.content[0].memberships").doesNotExist())
             .andExpect(jsonPath("$.content[0].number").doesNotExist())
     }
+
+    @Test
+    fun `player list supports omitted and populated name filters`() {
+        playerService.create(Player(UUID.randomUUID(), "Ivan", "Petrov"))
+        playerService.create(Player(UUID.randomUUID(), "Anna", "Ivanova"))
+
+        mockMvc.perform(get("/api/v1/players"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(2))
+
+        mockMvc.perform(get("/api/v1/players").param("name", "ivan petr"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].firstName").value("Ivan"))
+    }
 }

@@ -40,7 +40,7 @@ class PlayerServiceImpl(
     }
 
     override fun findAllFiltered(filter: PlayerFilterRequest): List<Player> {
-        val players = playerRepository.findFiltered(filter.name)
+        val players = playerRepository.findFiltered(filter.name ?: "")
         if (filter.teamId == null) return players
         val playerIds = teamPlayerService.getByTeamId(filter.teamId).mapTo(mutableSetOf()) { it.playerId }
         return players.filter { it.id in playerIds }

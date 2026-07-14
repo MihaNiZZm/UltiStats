@@ -16,16 +16,16 @@ interface SpringDataPlayerRepository : JpaRepository<Player, UUID> {
     @Query("""
         SELECT p FROM Player p
         WHERE p.deletedAt IS NULL
-        AND (:name IS NULL OR LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%'))
     """)
-    fun findFiltered(name: String?): List<Player>
+    fun findFiltered(name: String): List<Player>
 
     @Query("""
         SELECT COUNT(p) FROM Player p
         WHERE p.deletedAt IS NULL
-        AND (:name IS NULL OR LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND LOWER(CONCAT(p.firstName, ' ', p.lastName)) LIKE LOWER(CONCAT('%', :name, '%'))
     """)
-    fun countFiltered(name: String?): Long
+    fun countFiltered(name: String): Long
 
     fun countByDeletedAtIsNull(): Long
 }
