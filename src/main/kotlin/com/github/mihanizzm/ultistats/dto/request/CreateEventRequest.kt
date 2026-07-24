@@ -3,6 +3,7 @@ package com.github.mihanizzm.ultistats.dto.request
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.github.mihanizzm.ultistats.model.events.EventType
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.Instant
 import java.util.UUID
@@ -24,7 +25,26 @@ import java.util.UUID
     JsonSubTypes.Type(SystemEventRequest::class, name = "HALFTIME_START"),
     JsonSubTypes.Type(SystemEventRequest::class, name = "HALFTIME_END"),
 )
-@Schema(oneOf = [OnePlayerEventRequest::class, TwoPlayerEventRequest::class, TeamEventRequest::class, SystemEventRequest::class])
+@Schema(
+    oneOf = [OnePlayerEventRequest::class, TwoPlayerEventRequest::class, TeamEventRequest::class, SystemEventRequest::class],
+    discriminatorProperty = "type",
+    discriminatorMapping = [
+        DiscriminatorMapping(value = "DROP", schema = OnePlayerEventRequest::class),
+        DiscriminatorMapping(value = "PULL", schema = OnePlayerEventRequest::class),
+        DiscriminatorMapping(value = "BRICK", schema = OnePlayerEventRequest::class),
+        DiscriminatorMapping(value = "TURNOVER", schema = OnePlayerEventRequest::class),
+        DiscriminatorMapping(value = "PASS", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "GOAL", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "BLOCK_MARKER", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "BLOCK_FIELD", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "INTERCEPTION", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "CALLAHAN", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "TIMEOUT_START", schema = TeamEventRequest::class),
+        DiscriminatorMapping(value = "TIMEOUT_END", schema = TeamEventRequest::class),
+        DiscriminatorMapping(value = "HALFTIME_START", schema = SystemEventRequest::class),
+        DiscriminatorMapping(value = "HALFTIME_END", schema = SystemEventRequest::class),
+    ],
+)
 sealed interface CreateEventRequest {
     val type: EventType
     val occurredAt: Instant

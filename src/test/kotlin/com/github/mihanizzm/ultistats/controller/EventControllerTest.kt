@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.UUID
@@ -84,6 +86,30 @@ class EventControllerTest {
             .andExpect(status().isCreated).andExpect(jsonPath("$.teamId").value(team1.id.toString()))
         mockMvc.perform(postEvent(mapOf("type" to "HALFTIME_START", "occurredAt" to "2026-07-14T10:01:00Z")))
             .andExpect(status().isCreated).andExpect(jsonPath("$.teamId").doesNotExist())
+    }
+
+    @Test
+    fun `event OpenAPI schemas map runtime types to their shapes`() {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.propertyName").value("type"))
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.length()").value(14))
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.TURNOVER").value("#/components/schemas/OnePlayerEventResponse"))
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.PASS").value("#/components/schemas/TwoPlayerEventResponse"))
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.TIMEOUT_START").value("#/components/schemas/TeamEventResponse"))
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.HALFTIME_START").value("#/components/schemas/SystemEventResponse"))
+            .andExpect(jsonPath("$.components.schemas.CreateEventRequest.discriminator.mapping.length()").value(14))
+    }
+
+    @Test
+    fun `frontend origin is allowed by CORS`() {
+        mockMvc.perform(
+            options("/api/v1/matches")
+                .header("Origin", "http://localhost:3000")
+                .header("Access-Control-Request-Method", "GET"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
     }
 
     @Test
