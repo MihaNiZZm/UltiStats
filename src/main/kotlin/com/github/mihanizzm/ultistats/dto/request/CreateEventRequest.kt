@@ -46,16 +46,27 @@ import java.util.UUID
     ],
 )
 sealed interface CreateEventRequest {
+    @get:Schema(
+        description = "Тип события. Он определяет форму запроса и является обязательным.",
+        example = "PASS",
+    )
     val type: EventType
+
+    @get:Schema(
+        description = "Фактическое время события в формате ISO-8601 UTC.",
+        example = "2026-07-28T12:30:00Z",
+    )
     val occurredAt: Instant
 }
 
+@Schema(description = "Событие с одним игроком: DROP, PULL, BRICK или TURNOVER.")
 data class OnePlayerEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,
     val playerId: UUID,
 ) : CreateEventRequest
 
+@Schema(description = "Событие с двумя игроками: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION или CALLAHAN.")
 data class TwoPlayerEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,
@@ -63,12 +74,14 @@ data class TwoPlayerEventRequest(
     val toPlayerId: UUID,
 ) : CreateEventRequest
 
+@Schema(description = "Командное событие: TIMEOUT_START или TIMEOUT_END.")
 data class TeamEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,
     val teamId: UUID,
 ) : CreateEventRequest
 
+@Schema(description = "Системное событие: HALFTIME_START или HALFTIME_END.")
 data class SystemEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,

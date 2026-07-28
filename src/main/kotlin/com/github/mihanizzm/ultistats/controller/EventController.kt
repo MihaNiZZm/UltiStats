@@ -7,6 +7,10 @@ import com.github.mihanizzm.ultistats.facade.EventFacade
 import com.github.mihanizzm.ultistats.facade.EventResult
 import com.github.mihanizzm.ultistats.model.events.Event
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.parameters.RequestBody as OpenApiRequestBody
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -41,6 +45,40 @@ class EventController(
     @Operation(summary = "Создать событие")
     fun create(
         @PathVariable matchId: UUID,
+        @OpenApiRequestBody(
+            required = true,
+            description = """Создание события матча. Поле `type` обязательно и определяет остальные поля запроса.""",
+            content = [Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = CreateEventRequest::class),
+                examples = [
+                    ExampleObject(
+                        name = "onePlayerEvent",
+                        summary = "Событие с одним игроком",
+                        description = "Допустимые type: DROP, PULL, BRICK, TURNOVER.",
+                        value = """{"type":"TURNOVER","occurredAt":"2026-07-28T12:30:00Z","playerId":"11111111-1111-1111-1111-111111111111"}""",
+                    ),
+                    ExampleObject(
+                        name = "twoPlayerEvent",
+                        summary = "Событие с двумя игроками",
+                        description = "Допустимые type: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION, CALLAHAN.",
+                        value = """{"type":"PASS","occurredAt":"2026-07-28T12:30:00Z","fromPlayerId":"11111111-1111-1111-1111-111111111111","toPlayerId":"22222222-2222-2222-2222-222222222222"}""",
+                    ),
+                    ExampleObject(
+                        name = "teamEvent",
+                        summary = "Командное событие",
+                        description = "Допустимые type: TIMEOUT_START, TIMEOUT_END.",
+                        value = """{"type":"TIMEOUT_START","occurredAt":"2026-07-28T12:30:00Z","teamId":"33333333-3333-3333-3333-333333333333"}""",
+                    ),
+                    ExampleObject(
+                        name = "systemEvent",
+                        summary = "Системное событие",
+                        description = "Допустимые type: HALFTIME_START, HALFTIME_END.",
+                        value = """{"type":"HALFTIME_START","occurredAt":"2026-07-28T12:30:00Z"}""",
+                    ),
+                ],
+            )],
+        )
         @RequestBody request: CreateEventRequest
     ): ResponseEntity<EventResponse> =
         when (val result = eventFacade.create(matchId, request)) {
