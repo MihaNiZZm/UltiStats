@@ -25,7 +25,7 @@ data class MatchResponse(
                         teamId = team.id,
                         teamName = team.name,
                         teamScore = teamScore,
-                        playerIds = match.playerIdsByTeam[teamId].orEmpty(),
+                        participants = match.participantsByTeam[teamId].orEmpty().map(MatchParticipantResponse::from),
                         city = team.city,
                         photoUrl = team.photoUrl,
                     )

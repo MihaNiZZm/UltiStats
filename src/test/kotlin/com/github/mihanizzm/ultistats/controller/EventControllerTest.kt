@@ -2,12 +2,14 @@ package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.model.MatchParticipantKind
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.UUID
+import kotlin.test.assertEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,6 +37,7 @@ class EventControllerTest {
     @Autowired lateinit var teamService: TeamService
     @Autowired lateinit var playerService: PlayerService
     @Autowired lateinit var teamPlayerService: TeamPlayerService
+    @Autowired lateinit var statisticsService: StatisticsService
 
     private lateinit var match: Match
     private lateinit var team1: Team
@@ -63,11 +67,11 @@ class EventControllerTest {
 
     @Test
     fun `one-player event has only its category fields`() {
-        mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id)))
+        mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").isNotEmpty)
             .andExpect(jsonPath("$.sequenceNumber").value(1))
-            .andExpect(jsonPath("$.playerId").value(player1.id.toString()))
+            .andExpect(jsonPath("$.participantId").value(player1.id.toString()))
             .andExpect(jsonPath("$.teamId").doesNotExist())
             .andExpect(jsonPath("$._eventClass").doesNotExist())
     }
@@ -76,7 +80,7 @@ class EventControllerTest {
     fun `two-player request rejects players from wrong team for pass`() {
         mockMvc.perform(postEvent(mapOf(
             "type" to "PASS", "occurredAt" to "2026-07-14T10:00:00Z",
-            "fromPlayerId" to player1.id, "toPlayerId" to opponent.id,
+            "fromParticipantId" to player1.id, "toParticipantId" to opponent.id,
         ))).andExpect(status().isBadRequest)
     }
 
@@ -109,10 +113,10 @@ class EventControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$examplesPath.length()").value(4))
             .andExpect(jsonPath("$examplesPath.onePlayerEvent.value.type").value("TURNOVER"))
-            .andExpect(jsonPath("$examplesPath.onePlayerEvent.value.playerId").exists())
+            .andExpect(jsonPath("$examplesPath.onePlayerEvent.value.participantId").exists())
             .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.type").value("PASS"))
-            .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.fromPlayerId").exists())
-            .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.toPlayerId").exists())
+            .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.fromParticipantId").exists())
+            .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.toParticipantId").exists())
             .andExpect(jsonPath("$examplesPath.teamEvent.value.type").value("TIMEOUT_START"))
             .andExpect(jsonPath("$examplesPath.teamEvent.value.teamId").exists())
             .andExpect(jsonPath("$examplesPath.systemEvent.value.type").value("HALFTIME_START"))
@@ -131,17 +135,17 @@ class EventControllerTest {
 
     @Test
     fun `event is read patched and deleted by UUID`() {
-        val created = mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id)))
+        val created = mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
             .andReturn().response.contentAsString
         val eventId = objectMapper.readTree(created).get("id").asText()
 
         mockMvc.perform(get("/api/v1/matches/${match.id}/events/$eventId"))
-            .andExpect(status().isOk).andExpect(jsonPath("$.playerId").value(player1.id.toString()))
+            .andExpect(status().isOk).andExpect(jsonPath("$.participantId").value(player1.id.toString()))
         mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$eventId")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("type" to "TURNOVER", "playerId" to player2.id))))
+            .content(objectMapper.writeValueAsString(mapOf("type" to "TURNOVER", "participantId" to player2.id))))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.playerId").value(player2.id.toString()))
+            .andExpect(jsonPath("$.participantId").value(player2.id.toString()))
             .andExpect(jsonPath("$.occurredAt").value("2026-07-14T10:00:00Z"))
         mockMvc.perform(delete("/api/v1/matches/${match.id}/events/$eventId"))
             .andExpect(status().isNoContent)
@@ -150,10 +154,10 @@ class EventControllerTest {
 
     @Test
     fun `event type cannot change and system event cannot be patched`() {
-        val playerEvent = createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id))
+        val playerEvent = createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id))
         mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$playerEvent")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("type" to "DROP", "playerId" to player1.id))))
+            .content(objectMapper.writeValueAsString(mapOf("type" to "DROP", "participantId" to player1.id))))
             .andExpect(status().isBadRequest)
 
         val systemEvent = createAndGetId(mapOf("type" to "HALFTIME_START", "occurredAt" to "2026-07-14T10:01:00Z"))
@@ -164,9 +168,85 @@ class EventControllerTest {
 
     @Test
     fun `creation rejects timestamp before previous event`() {
-        createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:01:00Z", "playerId" to player1.id))
-        mockMvc.perform(postEvent(mapOf("type" to "DROP", "occurredAt" to "2026-07-14T10:00:00Z", "playerId" to player1.id)))
+        createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:01:00Z", "participantId" to player1.id))
+        mockMvc.perform(postEvent(mapOf("type" to "DROP", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
             .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `pass between two unknown participants can be corrected to real participants`() {
+        val unknowns = matchService.getOrThrow(match.id).participantsByTeam.getValue(team1.id)
+            .filter { it.kind == MatchParticipantKind.UNKNOWN }
+        val created = mockMvc.perform(postEvent(mapOf(
+            "type" to "PASS",
+            "occurredAt" to "2026-07-14T10:00:00Z",
+            "fromParticipantId" to unknowns[0].participantId,
+            "toParticipantId" to unknowns[1].participantId,
+        )))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.fromParticipantId").value(unknowns[0].participantId.toString()))
+            .andExpect(jsonPath("$.toParticipantId").value(unknowns[1].participantId.toString()))
+            .andReturn().response.contentAsString
+        val eventId = objectMapper.readTree(created).get("id").asText()
+
+        val unresolved = statisticsService.recalculateMatchStatistics(match.id)
+        assertEquals(1, unresolved.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes)
+        assertEquals(1, unresolved.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches)
+
+        mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$eventId")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "PASS",
+                "fromParticipantId" to player1.id,
+            ))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fromParticipantId").value(player1.id.toString()))
+            .andExpect(jsonPath("$.toParticipantId").value(unknowns[1].participantId.toString()))
+
+        val partiallyCorrected = statisticsService.recalculateMatchStatistics(match.id)
+        assertEquals(0, partiallyCorrected.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes)
+        assertEquals(1, partiallyCorrected.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches)
+        assertEquals(1, partiallyCorrected.playerStatistics.single { it.participantId == player1.id }.attack.passes)
+
+        mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$eventId")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf(
+                "type" to "PASS",
+                "toParticipantId" to player2.id,
+            ))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fromParticipantId").value(player1.id.toString()))
+            .andExpect(jsonPath("$.toParticipantId").value(player2.id.toString()))
+
+        val corrected = statisticsService.recalculateMatchStatistics(match.id)
+        assertEquals(0, corrected.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes)
+        assertEquals(0, corrected.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches)
+        assertEquals(1, corrected.playerStatistics.single { it.participantId == player1.id }.attack.passes)
+        assertEquals(1, corrected.playerStatistics.single { it.participantId == player2.id }.attack.catches)
+    }
+
+    @Test
+    fun `one-participant event accepts unknown participant`() {
+        val unknown = matchService.getOrThrow(match.id).participantsByTeam.getValue(team1.id)
+            .first { it.kind == MatchParticipantKind.UNKNOWN }
+
+        mockMvc.perform(postEvent(mapOf(
+            "type" to "TURNOVER",
+            "occurredAt" to "2026-07-14T10:00:00Z",
+            "participantId" to unknown.participantId,
+        )))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.participantId").value(unknown.participantId.toString()))
+    }
+
+    @Test
+    fun `two-participant event rejects the same participant in both roles`() {
+        mockMvc.perform(postEvent(mapOf(
+            "type" to "PASS",
+            "occurredAt" to "2026-07-14T10:00:00Z",
+            "fromParticipantId" to player1.id,
+            "toParticipantId" to player1.id,
+        ))).andExpect(status().isBadRequest)
     }
 
     private fun postEvent(body: Map<String, Any>) = post("/api/v1/matches/${match.id}/events")

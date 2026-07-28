@@ -61,13 +61,13 @@ class EventFacade(
         if (request.type != stored.event.type) return EventResult.BadRequest
         val merged: CreateEventRequest = when {
             stored.event is OnePlayerEvent && request is OnePlayerEventPatchRequest ->
-                OnePlayerEventRequest(stored.event.type, stored.event.occurredAt, request.playerId)
+                OnePlayerEventRequest(stored.event.type, stored.event.occurredAt, request.participantId)
             stored.event is TwoPlayerEvent && request is TwoPlayerEventPatchRequest ->
                 TwoPlayerEventRequest(
                     stored.event.type,
                     stored.event.occurredAt,
-                    request.fromPlayerId ?: stored.event.fromPlayer,
-                    request.toPlayerId ?: stored.event.toPlayer,
+                    request.fromParticipantId ?: stored.event.fromParticipant,
+                    request.toParticipantId ?: stored.event.toParticipant,
                 )
             stored.event is TeamEvent && request is TeamEventPatchRequest ->
                 TeamEventRequest(stored.event.type, stored.event.occurredAt, request.teamId)

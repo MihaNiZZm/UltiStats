@@ -37,8 +37,8 @@ class TimeStatisticsTest : MatchAbstractTest() {
         assertThat(team1.totalPossessionTime).isEqualTo(Duration.ofSeconds(0))
         assertThat(team2.totalPossessionTime).isEqualTo(Duration.ofSeconds(30)) // 10..40
 
-        val p7 = stats.playerStatistics.first { it.playerId == UUIDS[7] }.time
-        val p8 = stats.playerStatistics.first { it.playerId == UUIDS[8] }.time
+        val p7 = stats.playerStatistics.first { it.participantId == UUIDS[7] }.time
+        val p8 = stats.playerStatistics.first { it.participantId == UUIDS[8] }.time
         assertThat(p7.totalPossessionTime).isEqualTo(Duration.ofSeconds(15)) // 10..25
         assertThat(p8.totalPossessionTime).isEqualTo(Duration.ofSeconds(15)) // 25..40
     }
@@ -168,7 +168,7 @@ class TimeStatisticsTest : MatchAbstractTest() {
         MATCH.events.add(TwoPlayerEvent(UUIDS[10], UUIDS[11], ts(50), EventType.GOAL))
 
         val stats = recalculateTestMatchStatistics()
-        fun playerTime(idIdx: Int) = stats.playerStatistics.first { it.playerId == UUIDS[idIdx] }.time.totalPossessionTime
+        fun playerTime(idIdx: Int) = stats.playerStatistics.first { it.participantId == UUIDS[idIdx] }.time.totalPossessionTime
 
         assertThat(playerTime(7)).isEqualTo(Duration.ofSeconds(10)) // 5..15
         assertThat(playerTime(8)).isEqualTo(Duration.ofSeconds(10)) // 15..25

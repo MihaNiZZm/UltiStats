@@ -39,9 +39,12 @@ sealed interface EventResponse {
 
     companion object {
         fun from(stored: StoredEvent): EventResponse = when (val event = stored.event) {
-            is OnePlayerEvent -> OnePlayerEventResponse(stored.id, stored.sequenceNumber, event.type, event.occurredAt, event.player)
+            is OnePlayerEvent -> OnePlayerEventResponse(
+                stored.id, stored.sequenceNumber, event.type, event.occurredAt, event.participant,
+            )
             is TwoPlayerEvent -> TwoPlayerEventResponse(
-                stored.id, stored.sequenceNumber, event.type, event.occurredAt, event.fromPlayer, event.toPlayer,
+                stored.id, stored.sequenceNumber, event.type, event.occurredAt,
+                event.fromParticipant, event.toParticipant,
             )
             is TeamEvent -> TeamEventResponse(stored.id, stored.sequenceNumber, event.type, event.occurredAt, event.team)
             is SystemEvent -> SystemEventResponse(stored.id, stored.sequenceNumber, event.type, event.occurredAt)
@@ -54,7 +57,7 @@ data class OnePlayerEventResponse(
     override val sequenceNumber: Int,
     override val type: EventType,
     override val occurredAt: Instant,
-    val playerId: UUID,
+    val participantId: UUID,
 ) : EventResponse
 
 data class TwoPlayerEventResponse(
@@ -62,8 +65,8 @@ data class TwoPlayerEventResponse(
     override val sequenceNumber: Int,
     override val type: EventType,
     override val occurredAt: Instant,
-    val fromPlayerId: UUID,
-    val toPlayerId: UUID,
+    val fromParticipantId: UUID,
+    val toParticipantId: UUID,
 ) : EventResponse
 
 data class TeamEventResponse(

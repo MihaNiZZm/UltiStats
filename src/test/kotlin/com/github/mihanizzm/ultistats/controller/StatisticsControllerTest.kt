@@ -2,6 +2,7 @@ package com.github.mihanizzm.ultistats.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.model.MatchParticipantKind
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.EventType
@@ -79,6 +80,31 @@ class StatisticsControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.playerStatistics").isArray)
             .andExpect(jsonPath("$.teamStatistics").isArray)
+    }
+
+    @Test
+    fun `Статистика использует контракт участников матча и включает неизвестных`() {
+        val participants = matchService.getOrThrow(match.id).participantsByTeam.values.flatten()
+        val unknownParticipantIds = participants
+            .filter { it.kind == MatchParticipantKind.UNKNOWN }
+            .map { it.participantId.toString() }
+            .toSet()
+
+        val response = mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
+            .andExpect(status().isOk)
+            .andReturn()
+        val playerStatistics = objectMapper.readTree(response.response.contentAsString).get("playerStatistics")
+
+        assertThat(playerStatistics).allSatisfy { statistics ->
+            assertThat(statistics.hasNonNull("participantId")).isTrue()
+            assertThat(statistics.has("playerId")).isFalse()
+        }
+        assertThat(playerStatistics.map { it.get("participantId").asText() }).containsExactlyInAnyOrderElementsOf(
+            participants.map { it.participantId.toString() },
+        )
+        assertThat(playerStatistics.map { it.get("participantId").asText() }.toSet())
+            .containsAll(unknownParticipantIds)
+        assertThat(unknownParticipantIds).hasSize(4)
     }
 
     @Test

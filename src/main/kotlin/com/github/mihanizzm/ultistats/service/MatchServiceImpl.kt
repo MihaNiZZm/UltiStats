@@ -3,13 +3,14 @@ package com.github.mihanizzm.ultistats.service
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.exception.EntityNotFoundException
 import com.github.mihanizzm.ultistats.model.Match
-import com.github.mihanizzm.ultistats.model.MatchPlayer
+import com.github.mihanizzm.ultistats.model.MatchParticipant
+import com.github.mihanizzm.ultistats.model.MatchParticipantKind
 import com.github.mihanizzm.ultistats.model.MatchTeam
 import com.github.mihanizzm.ultistats.model.TeamScore
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
-import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchPlayerRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchParticipantRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchTeamRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamPlayerRepository
@@ -22,7 +23,7 @@ import java.util.UUID
 class MatchServiceImpl(
     private val matchRepository: SpringDataMatchRepository,
     private val matchTeamRepository: SpringDataMatchTeamRepository,
-    private val matchPlayerRepository: SpringDataMatchPlayerRepository,
+    private val matchParticipantRepository: SpringDataMatchParticipantRepository,
     private val teamPlayerRepository: SpringDataTeamPlayerRepository,
     private val eventRepository: SpringDataEventRepository,
 ) : MatchService {
@@ -74,13 +75,13 @@ class MatchServiceImpl(
         // Player-to-team attribution comes from the match roster snapshot, not the current roster.
         val match = getOrThrow(matchId)
         val scores = match.teamIds.associateWith { 0 }.toMutableMap()
-        val teamByPlayerId = match.playerIdsByTeam.flatMap { (teamId, playerIds) ->
-            playerIds.map { it to teamId }
+        val teamByParticipantId = match.participantsByTeam.flatMap { (teamId, participants) ->
+            participants.map { it.participantId to teamId }
         }.toMap()
         match.events.forEach { event ->
             if (event.type == EventType.GOAL || event.type == EventType.CALLAHAN) {
-                val scoringPlayer = (event as TwoPlayerEvent).toPlayer
-                val teamId = teamByPlayerId[scoringPlayer] ?: return@forEach
+                val scoringParticipant = (event as TwoPlayerEvent).toParticipant
+                val teamId = teamByParticipantId[scoringParticipant] ?: return@forEach
                 scores.computeIfPresent(teamId) { _, score -> score + 1 }
             }
         }
@@ -110,7 +111,7 @@ class MatchServiceImpl(
         // The API still consumes Match as an aggregate. Rebuild its transient read fields from
         // normalized tables while avoiding the much larger event query on match-list requests.
         val matchTeams = matchTeamRepository.findAllByMatchIdOrderByPosition(id)
-        val matchPlayers = matchPlayerRepository.findAllByMatchId(id)
+        val matchParticipants = matchParticipantRepository.findAllByMatchId(id)
         val events = if (includeEvents) {
             eventRepository.findAllByMatchIdAndDeletedAtIsNullOrderBySequenceNumber(id)
                 .map { it.toDomain() }
@@ -121,7 +122,13 @@ class MatchServiceImpl(
         return copy(
             teamIds = matchTeams.map { it.teamId },
             teamScores = matchTeams.map { TeamScore(it.teamId, it.score) }.toMutableList(),
-            playerIdsByTeam = matchPlayers.groupBy({ it.teamId }, { it.playerId }),
+            participantsByTeam = matchParticipants
+                .sortedWith(
+                    compareBy<MatchParticipant> { it.kind == MatchParticipantKind.UNKNOWN }
+                        .thenBy { it.number ?: Int.MAX_VALUE }
+                        .thenBy { it.unknownSlot ?: 0 },
+                )
+                .groupBy { it.teamId },
             events = events,
             eventCount = if (includeEvents) events.size else
                 eventRepository.countByMatchIdAndDeletedAtIsNull(id).toInt(),
@@ -133,18 +140,19 @@ class MatchServiceImpl(
         // The snapshot keeps historical event attribution stable after later roster changes.
         val existingTeams = matchTeamRepository.findAllByMatchIdOrderByPosition(matchId)
         if (existingTeams.map { it.teamId } == teamIds) return
-        matchPlayerRepository.deleteAllByMatchId(matchId)
-        matchPlayerRepository.flush()
+        matchParticipantRepository.deleteAllByMatchId(matchId)
+        matchParticipantRepository.flush()
         matchTeamRepository.deleteAllByMatchId(matchId)
         matchTeamRepository.flush()
         matchTeamRepository.saveAll(teamIds.mapIndexed { index, teamId ->
             MatchTeam(matchId, teamId, index + 1)
         })
-        val players = teamIds.flatMap { teamId ->
-            teamPlayerRepository.findAllByTeamIdAndDeletedAtIsNull(teamId).map { membership ->
-                MatchPlayer(matchId, membership.playerId, teamId, membership.number)
+        val participants = teamIds.flatMap { teamId ->
+            val players = teamPlayerRepository.findAllByTeamIdAndDeletedAtIsNull(teamId).map { membership ->
+                MatchParticipant.player(matchId, teamId, membership.playerId, membership.number)
             }
+            players + (1..2).map { slot -> MatchParticipant.unknown(matchId, teamId, slot) }
         }
-        matchPlayerRepository.saveAll(players)
+        matchParticipantRepository.saveAll(participants)
     }
 }

@@ -4,11 +4,11 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Событие с одним игроком.
+ * Событие с одним участником матча.
  * Используется для: PULL, BRICK, DROP, TURNOVER.
  */
 data class OnePlayerEvent(
-    val player: UUID,
+    val participant: UUID,
     override val occurredAt: Instant,
     override val type: EventType,
 ) : Event {

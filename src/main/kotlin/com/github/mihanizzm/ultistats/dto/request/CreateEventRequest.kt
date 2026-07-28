@@ -59,19 +59,19 @@ sealed interface CreateEventRequest {
     val occurredAt: Instant
 }
 
-@Schema(description = "Событие с одним игроком: DROP, PULL, BRICK или TURNOVER.")
+@Schema(description = "Событие с одним участником матча: DROP, PULL, BRICK или TURNOVER.")
 data class OnePlayerEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,
-    val playerId: UUID,
+    val participantId: UUID,
 ) : CreateEventRequest
 
-@Schema(description = "Событие с двумя игроками: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION или CALLAHAN.")
+@Schema(description = "Событие с двумя участниками матча: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION или CALLAHAN.")
 data class TwoPlayerEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,
-    val fromPlayerId: UUID,
-    val toPlayerId: UUID,
+    val fromParticipantId: UUID,
+    val toParticipantId: UUID,
 ) : CreateEventRequest
 
 @Schema(description = "Командное событие: TIMEOUT_START или TIMEOUT_END.")

@@ -23,7 +23,7 @@ class StatisticsServiceImpl(
 
         val playerIds = teamIds.flatMap { teamPlayerService.getByTeamId(it).map { membership -> membership.playerId } }
         val playersStats = playerService.getAllByIds(playerIds.distinct())
-            .map { PlayerStatistics(playerId = it.id) }
+            .map { PlayerStatistics(participantId = it.id) }
 
         return MatchStatistics(
             playerStatistics = playersStats,
@@ -35,16 +35,16 @@ class StatisticsServiceImpl(
         val match = matchService.getOrThrow(matchId)
         val teamIds = match.teamIds
         val initialStatistics = MatchStatistics(
-            playerStatistics = match.playerIdsByTeam.values.flatten().distinct()
-                .map { PlayerStatistics(playerId = it) },
+            playerStatistics = match.participantsByTeam.values.flatten()
+                .map { PlayerStatistics(participantId = it.participantId) },
             teamStatistics = teamIds.map { TeamStatistics(teamId = it) },
         )
-        val teamByPlayerId = match.playerIdsByTeam.flatMap { (teamId, playerIds) ->
-            playerIds.map { it to teamId }
+        val teamByParticipantId = match.participantsByTeam.flatMap { (teamId, participants) ->
+            participants.map { it.participantId to teamId }
         }.toMap()
 
         return statisticsAggregatorList.fold(initialStatistics) { stats, aggregator ->
-            aggregator.aggregate(stats, match.events, teamByPlayerId)
+            aggregator.aggregate(stats, match.events, teamByParticipantId)
         }
     }
 }

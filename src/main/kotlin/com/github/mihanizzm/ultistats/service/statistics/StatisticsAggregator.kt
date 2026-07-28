@@ -8,6 +8,6 @@ interface StatisticsAggregator {
     fun aggregate(
         previousStatisticsState: MatchStatistics,
         events: List<Event>,
-        teamByPlayerId: Map<UUID, UUID>,
+        teamByParticipantId: Map<UUID, UUID>,
     ): MatchStatistics
 }

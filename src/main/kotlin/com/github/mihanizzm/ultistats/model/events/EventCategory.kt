@@ -10,7 +10,7 @@ enum class EventCategory {
     ONE_PLAYER,
 
     /**
-     * Событие с двумя игроками. Требует: fromPlayer, toPlayer.
+     * Событие с двумя участниками матча. Требует: fromParticipant, toParticipant.
      */
     TWO_PLAYER,
 

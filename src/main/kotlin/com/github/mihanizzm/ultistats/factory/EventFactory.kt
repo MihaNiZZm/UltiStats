@@ -12,30 +12,40 @@ import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
 import com.github.mihanizzm.ultistats.model.events.SystemEvent
 import com.github.mihanizzm.ultistats.model.events.TeamEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
-import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchPlayerRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchParticipantRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchTeamRepository
 import org.springframework.stereotype.Component
 import java.util.UUID
 
 @Component
 class EventFactory(
-    private val matchPlayerRepository: SpringDataMatchPlayerRepository,
+    private val matchParticipantRepository: SpringDataMatchParticipantRepository,
     private val matchTeamRepository: SpringDataMatchTeamRepository,
 ) {
     fun createFromRequest(request: CreateEventRequest, matchId: UUID): Event? {
-        val teamByPlayerId = matchPlayerRepository.findAllByMatchId(matchId).associate { it.playerId to it.teamId }
+        val teamByParticipantId = matchParticipantRepository.findAllByMatchId(matchId)
+            .associate { it.participantId to it.teamId }
         return when (request) {
             is OnePlayerEventRequest -> {
-                if (request.type.category != EventCategory.ONE_PLAYER || request.playerId !in teamByPlayerId) return null
-                OnePlayerEvent(request.playerId, request.occurredAt, request.type)
+                if (
+                    request.type.category != EventCategory.ONE_PLAYER ||
+                    request.participantId !in teamByParticipantId
+                ) return null
+                OnePlayerEvent(request.participantId, request.occurredAt, request.type)
             }
             is TwoPlayerEventRequest -> {
                 if (request.type.category != EventCategory.TWO_PLAYER) return null
-                val fromTeam = teamByPlayerId[request.fromPlayerId] ?: return null
-                val toTeam = teamByPlayerId[request.toPlayerId] ?: return null
+                if (request.fromParticipantId == request.toParticipantId) return null
+                val fromTeam = teamByParticipantId[request.fromParticipantId] ?: return null
+                val toTeam = teamByParticipantId[request.toParticipantId] ?: return null
                 val sameTeamRequired = request.type == EventType.PASS || request.type == EventType.GOAL
                 if (sameTeamRequired != (fromTeam == toTeam)) return null
-                TwoPlayerEvent(request.fromPlayerId, request.toPlayerId, request.occurredAt, request.type)
+                TwoPlayerEvent(
+                    request.fromParticipantId,
+                    request.toParticipantId,
+                    request.occurredAt,
+                    request.type,
+                )
             }
             is TeamEventRequest -> {
                 if (request.type.category != EventCategory.TEAM) return null

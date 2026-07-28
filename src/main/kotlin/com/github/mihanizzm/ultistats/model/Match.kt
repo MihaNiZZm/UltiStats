@@ -34,7 +34,7 @@ data class Match(
     val teamScores: MutableList<TeamScore> = mutableListOf(),
 
     @Transient
-    val playerIdsByTeam: Map<UUID, List<UUID>> = emptyMap(),
+    val participantsByTeam: Map<UUID, List<MatchParticipant>> = emptyMap(),
 
     @Column(name = "planned_start_timestamp")
     val plannedStartTimestamp: Instant? = null,
