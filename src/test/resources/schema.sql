@@ -59,20 +59,18 @@ CREATE TABLE match_participants (
     match_id UUID NOT NULL,
     participant_id UUID NOT NULL,
     team_id UUID NOT NULL,
-    player_id UUID REFERENCES players(id),
     kind VARCHAR(16) NOT NULL,
     unknown_slot INTEGER,
     number INTEGER,
     PRIMARY KEY (match_id, participant_id),
     FOREIGN KEY (match_id, team_id) REFERENCES match_teams(match_id, team_id),
-    UNIQUE (match_id, player_id),
     UNIQUE (match_id, team_id, unknown_slot),
     UNIQUE (match_id, team_id, number),
     CHECK (number IS NULL OR number >= 0),
     CHECK (
-        (kind = 'PLAYER' AND player_id IS NOT NULL AND unknown_slot IS NULL)
+        (kind = 'PLAYER' AND unknown_slot IS NULL)
         OR
-        (kind = 'UNKNOWN' AND player_id IS NULL AND unknown_slot IN (1, 2) AND number IS NULL)
+        (kind = 'UNKNOWN' AND unknown_slot IN (1, 2) AND number IS NULL)
     )
 );
 

@@ -85,10 +85,10 @@ class RelationalModelIntegrationTest {
 
         val firstTeamPlayers = storedMatch.participantsByTeam[firstTeam.id].orEmpty()
             .filter { it.kind == MatchParticipantKind.PLAYER }
-            .mapNotNull { it.playerId }
+            .map { it.participantId }
         val secondTeamPlayers = storedMatch.participantsByTeam[secondTeam.id].orEmpty()
             .filter { it.kind == MatchParticipantKind.PLAYER }
-            .mapNotNull { it.playerId }
+            .map { it.participantId }
 
         assertEquals(setOf(firstPlayer.id, secondPlayer.id), firstTeamPlayers.toSet())
         assertEquals(emptyList(), secondTeamPlayers)
@@ -143,7 +143,6 @@ class RelationalModelIntegrationTest {
                 .filter { it.kind == MatchParticipantKind.UNKNOWN }
 
             assertEquals(listOf(1, 2), unknowns.map { it.unknownSlot })
-            assertEquals(listOf(null, null), unknowns.map { it.playerId })
             unknownParticipantIds += unknowns.map { it.participantId }
         }
         assertEquals(emptySet(), playerService.getAll().map { it.id }.toSet().intersect(unknownParticipantIds))

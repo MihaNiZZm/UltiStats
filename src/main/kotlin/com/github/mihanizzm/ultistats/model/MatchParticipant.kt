@@ -35,9 +35,6 @@ data class MatchParticipant(
     @Column(name = "team_id", nullable = false)
     val teamId: UUID,
 
-    @Column(name = "player_id")
-    val playerId: UUID? = null,
-
     @Enumerated(EnumType.STRING)
     @Column(name = "kind", nullable = false, length = 16)
     val kind: MatchParticipantKind,
@@ -53,7 +50,6 @@ data class MatchParticipant(
             matchId = matchId,
             participantId = playerId,
             teamId = teamId,
-            playerId = playerId,
             kind = MatchParticipantKind.PLAYER,
             number = number,
         )

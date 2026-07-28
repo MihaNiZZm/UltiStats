@@ -17,5 +17,8 @@ data class TwoPlayerEvent(
         require(type.category == EventCategory.TWO_PLAYER) {
             "EventType $type не является TWO_PLAYER событием"
         }
+        require(fromParticipant != toParticipant) {
+            "Участники события должны различаться"
+        }
     }
 }
