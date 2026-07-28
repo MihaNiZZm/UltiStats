@@ -66,6 +66,13 @@ class MatchControllerTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").exists())
             .andExpect(jsonPath("$.teams.length()").value(2))
+            .andExpect(jsonPath("$.teams[0].participants.length()").value(4))
+            .andExpect(jsonPath("$.teams[0].participants[2].kind").value("UNKNOWN"))
+            .andExpect(jsonPath("$.teams[0].participants[2].unknownSlot").value(1))
+            .andExpect(jsonPath("$.teams[0].participants[2].playerId").doesNotExist())
+            .andExpect(jsonPath("$.teams[0].participants[3].kind").value("UNKNOWN"))
+            .andExpect(jsonPath("$.teams[0].participants[3].unknownSlot").value(2))
+            .andExpect(jsonPath("$.teams[1].participants.length()").value(4))
             .andExpect(jsonPath("$.eventCount").value(0))
             .andExpect(jsonPath("$.diskHolderId").doesNotExist())
     }

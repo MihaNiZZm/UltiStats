@@ -39,11 +39,11 @@ data class EventEntity(
     @Column(name = "occurred_at", nullable = false)
     val occurredAt: Instant,
 
-    @Column(name = "from_player_id")
-    val fromPlayerId: UUID? = null,
+    @Column(name = "from_participant_id")
+    val fromParticipantId: UUID? = null,
 
-    @Column(name = "to_player_id")
-    val toPlayerId: UUID? = null,
+    @Column(name = "to_participant_id")
+    val toParticipantId: UUID? = null,
 
     @Column(name = "team_id")
     val teamId: UUID? = null,
@@ -53,12 +53,12 @@ data class EventEntity(
 ) {
     fun toDomain(): Event = when (eventType.category) {
         com.github.mihanizzm.ultistats.model.events.EventCategory.ONE_PLAYER -> {
-            OnePlayerEvent(requireNotNull(fromPlayerId), occurredAt, eventType)
+            OnePlayerEvent(requireNotNull(fromParticipantId), occurredAt, eventType)
         }
         com.github.mihanizzm.ultistats.model.events.EventCategory.TWO_PLAYER -> {
             TwoPlayerEvent(
-                requireNotNull(fromPlayerId),
-                requireNotNull(toPlayerId),
+                requireNotNull(fromParticipantId),
+                requireNotNull(toParticipantId),
                 occurredAt,
                 eventType,
             )
@@ -72,11 +72,13 @@ data class EventEntity(
     companion object {
         fun fromDomain(id: UUID, matchId: UUID, sequenceNumber: Int, event: Event): EventEntity = when (event) {
             is OnePlayerEvent -> EventEntity(
-                id, matchId, sequenceNumber, event.type, event.occurredAt, fromPlayerId = event.player,
+                id, matchId, sequenceNumber, event.type, event.occurredAt,
+                fromParticipantId = event.participant,
             )
             is TwoPlayerEvent -> EventEntity(
                 id, matchId, sequenceNumber, event.type, event.occurredAt,
-                fromPlayerId = event.fromPlayer, toPlayerId = event.toPlayer,
+                fromParticipantId = event.fromParticipant,
+                toParticipantId = event.toParticipant,
             )
             is TeamEvent -> EventEntity(
                 id, matchId, sequenceNumber, event.type, event.occurredAt, teamId = event.team,

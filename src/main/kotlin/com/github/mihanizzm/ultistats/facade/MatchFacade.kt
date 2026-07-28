@@ -77,7 +77,7 @@ class MatchFacade(
             plannedStartTimestamp = request.plannedStartTimestamp,
         )
         matchService.create(match)
-        return MatchResponse.from(match, teams.associateBy { it.id })
+        return MatchResponse.from(matchService.getOrThrow(match.id), teams.associateBy { it.id })
     }
 
     fun update(id: UUID, request: UpdateMatchRequest): MatchResponse? {
@@ -97,7 +97,7 @@ class MatchFacade(
             plannedStartTimestamp = request.plannedStartTimestamp ?: existingMatch.plannedStartTimestamp,
         )
         matchService.update(updatedMatch)
-        return MatchResponse.from(updatedMatch, teamsById)
+        return MatchResponse.from(matchService.getOrThrow(id), teamsById)
     }
 
     fun delete(id: UUID): Boolean {

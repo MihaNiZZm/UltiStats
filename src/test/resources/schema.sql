@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS events;
-DROP TABLE IF EXISTS match_players;
+DROP TABLE IF EXISTS match_participants;
 DROP TABLE IF EXISTS match_teams;
 DROP TABLE IF EXISTS team_players;
 DROP TABLE IF EXISTS matches;
@@ -55,15 +55,25 @@ CREATE TABLE match_teams (
 
 CREATE INDEX idx_match_teams_team_id_match_id ON match_teams(team_id, match_id);
 
-CREATE TABLE match_players (
+CREATE TABLE match_participants (
     match_id UUID NOT NULL,
-    player_id UUID NOT NULL REFERENCES players(id),
+    participant_id UUID NOT NULL,
     team_id UUID NOT NULL,
+    player_id UUID REFERENCES players(id),
+    kind VARCHAR(16) NOT NULL,
+    unknown_slot INTEGER,
     number INTEGER,
-    PRIMARY KEY (match_id, player_id),
+    PRIMARY KEY (match_id, participant_id),
     FOREIGN KEY (match_id, team_id) REFERENCES match_teams(match_id, team_id),
+    UNIQUE (match_id, player_id),
+    UNIQUE (match_id, team_id, unknown_slot),
     UNIQUE (match_id, team_id, number),
-    CHECK (number IS NULL OR number >= 0)
+    CHECK (number IS NULL OR number >= 0),
+    CHECK (
+        (kind = 'PLAYER' AND player_id IS NOT NULL AND unknown_slot IS NULL)
+        OR
+        (kind = 'UNKNOWN' AND player_id IS NULL AND unknown_slot IN (1, 2) AND number IS NULL)
+    )
 );
 
 CREATE TABLE events (
@@ -72,13 +82,13 @@ CREATE TABLE events (
     sequence_number INTEGER NOT NULL,
     event_type VARCHAR(32) NOT NULL,
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    from_player_id UUID,
-    to_player_id UUID,
+    from_participant_id UUID,
+    to_participant_id UUID,
     team_id UUID,
     deleted_at TIMESTAMP WITH TIME ZONE,
     UNIQUE (match_id, sequence_number),
-    FOREIGN KEY (match_id, from_player_id) REFERENCES match_players(match_id, player_id),
-    FOREIGN KEY (match_id, to_player_id) REFERENCES match_players(match_id, player_id),
+    FOREIGN KEY (match_id, from_participant_id) REFERENCES match_participants(match_id, participant_id),
+    FOREIGN KEY (match_id, to_participant_id) REFERENCES match_participants(match_id, participant_id),
     FOREIGN KEY (match_id, team_id) REFERENCES match_teams(match_id, team_id),
     CHECK (sequence_number > 0)
 );

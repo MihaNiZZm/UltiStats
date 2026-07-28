@@ -24,12 +24,4 @@ data class Player(
 
     @Column(name = "deleted_at")
     val deletedAt: Instant? = null,
-) {
-    companion object {
-        fun unknown() = Player(
-            id = UUID.randomUUID(),
-            firstName = "N/A",
-            lastName = "N/A",
-        )
-    }
-}
+)

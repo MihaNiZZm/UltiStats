@@ -26,11 +26,11 @@ import java.util.UUID
 @Schema(oneOf = [OnePlayerEventPatchRequest::class, TwoPlayerEventPatchRequest::class, TeamEventPatchRequest::class])
 sealed interface UpdateEventRequest { val type: EventType }
 
-data class OnePlayerEventPatchRequest(override val type: EventType, val playerId: UUID) : UpdateEventRequest
+data class OnePlayerEventPatchRequest(override val type: EventType, val participantId: UUID) : UpdateEventRequest
 data class TwoPlayerEventPatchRequest(
     override val type: EventType,
-    val fromPlayerId: UUID? = null,
-    val toPlayerId: UUID? = null,
+    val fromParticipantId: UUID? = null,
+    val toParticipantId: UUID? = null,
 ) : UpdateEventRequest
 data class TeamEventPatchRequest(override val type: EventType, val teamId: UUID) : UpdateEventRequest
 data class SystemEventPatchRequest(override val type: EventType) : UpdateEventRequest

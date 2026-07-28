@@ -1,8 +1,10 @@
 package com.github.mihanizzm.ultistats
 
 import com.github.mihanizzm.ultistats.dto.request.OnePlayerEventRequest
+import com.github.mihanizzm.ultistats.dto.request.TwoPlayerEventRequest
 import com.github.mihanizzm.ultistats.factory.EventFactory
 import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.model.MatchParticipantKind
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.TeamPlayer
@@ -14,6 +16,7 @@ import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -24,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @SpringBootTest
@@ -35,6 +39,7 @@ class RelationalModelIntegrationTest {
     @Autowired lateinit var matchService: MatchService
     @Autowired lateinit var eventService: EventService
     @Autowired lateinit var eventFactory: EventFactory
+    @Autowired lateinit var statisticsService: StatisticsService
     @Autowired lateinit var teamPlayerRepository: SpringDataTeamPlayerRepository
 
     private lateinit var firstTeam: Team
@@ -78,8 +83,15 @@ class RelationalModelIntegrationTest {
 
         val storedMatch = matchService.getOrThrow(match.id)
 
-        assertEquals(setOf(firstPlayer.id, secondPlayer.id), storedMatch.playerIdsByTeam[firstTeam.id]?.toSet())
-        assertEquals(emptyList(), storedMatch.playerIdsByTeam[secondTeam.id].orEmpty())
+        val firstTeamPlayers = storedMatch.participantsByTeam[firstTeam.id].orEmpty()
+            .filter { it.kind == MatchParticipantKind.PLAYER }
+            .mapNotNull { it.playerId }
+        val secondTeamPlayers = storedMatch.participantsByTeam[secondTeam.id].orEmpty()
+            .filter { it.kind == MatchParticipantKind.PLAYER }
+            .mapNotNull { it.playerId }
+
+        assertEquals(setOf(firstPlayer.id, secondPlayer.id), firstTeamPlayers.toSet())
+        assertEquals(emptyList(), secondTeamPlayers)
     }
 
     @Test
@@ -113,11 +125,54 @@ class RelationalModelIntegrationTest {
             OnePlayerEventRequest(
                 type = EventType.TURNOVER,
                 occurredAt = Instant.parse("2026-07-13T12:00:00Z"),
-                playerId = latePlayer.id,
+                participantId = latePlayer.id,
             ),
             match.id,
         )
 
         assertNull(event)
+    }
+
+    @Test
+    fun `match snapshot contains two unknown participants per team`() {
+        val storedMatch = matchService.getOrThrow(match.id)
+        val unknownParticipantIds = mutableSetOf<UUID>()
+
+        storedMatch.teamIds.forEach { teamId ->
+            val unknowns = storedMatch.participantsByTeam.getValue(teamId)
+                .filter { it.kind == MatchParticipantKind.UNKNOWN }
+
+            assertEquals(listOf(1, 2), unknowns.map { it.unknownSlot })
+            assertEquals(listOf(null, null), unknowns.map { it.playerId })
+            unknownParticipantIds += unknowns.map { it.participantId }
+        }
+        assertEquals(emptySet(), playerService.getAll().map { it.id }.toSet().intersect(unknownParticipantIds))
+    }
+
+    @Test
+    fun `pass between two unknown participants contributes to their statistics`() {
+        val unknowns = matchService.getOrThrow(match.id).participantsByTeam.getValue(firstTeam.id)
+            .filter { it.kind == MatchParticipantKind.UNKNOWN }
+        val event = eventFactory.createFromRequest(
+            TwoPlayerEventRequest(
+                type = EventType.PASS,
+                occurredAt = Instant.parse("2026-07-13T12:00:00Z"),
+                fromParticipantId = unknowns[0].participantId,
+                toParticipantId = unknowns[1].participantId,
+            ),
+            match.id,
+        )
+
+        eventService.create(assertNotNull(event), match.id)
+        val statistics = statisticsService.recalculateMatchStatistics(match.id)
+
+        assertEquals(
+            1,
+            statistics.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes,
+        )
+        assertEquals(
+            1,
+            statistics.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches,
+        )
     }
 }

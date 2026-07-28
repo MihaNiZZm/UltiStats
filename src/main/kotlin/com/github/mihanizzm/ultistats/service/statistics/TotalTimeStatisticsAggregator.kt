@@ -18,18 +18,18 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
     override fun aggregate(
         previousStatisticsState: MatchStatistics,
         events: List<Event>,
-        teamByPlayerId: Map<UUID, UUID>,
+        teamByParticipantId: Map<UUID, UUID>,
     ): MatchStatistics {
         var lastEventTime: Instant? = null
         var currentTeamPossessing: UUID? = null
-        var currentPlayerPossessing: UUID? = null
+        var currentParticipantPossessing: UUID? = null
         var isStopped = false
         var teamOnTimeout: UUID? = null
         var lastBetweenPointsStart: Instant? = null
 
         val teamPossessionTime = mutableMapOf<UUID, Duration>().withDefault { Duration.ZERO }
         val teamTimeBetweenPoints = mutableMapOf<UUID, Duration>().withDefault { Duration.ZERO }
-        val playerPossessionTime = mutableMapOf<UUID, Duration>().withDefault { Duration.ZERO }
+        val participantPossessionTime = mutableMapOf<UUID, Duration>().withDefault { Duration.ZERO }
         val timeSpentOnTimeouts = mutableMapOf<UUID, Duration>().withDefault { Duration.ZERO }
         var totalMatchTime = Duration.ZERO
         var timeSpentOnHalftime = Duration.ZERO
@@ -43,8 +43,8 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                 if (currentTeamPossessing != null && !isStopped) {
                     teamPossessionTime.merge(currentTeamPossessing, duration, Duration::plus)
                 }
-                if (currentPlayerPossessing != null && !isStopped) {
-                    playerPossessionTime.merge(currentPlayerPossessing, duration, Duration::plus)
+                if (currentParticipantPossessing != null && !isStopped) {
+                    participantPossessionTime.merge(currentParticipantPossessing, duration, Duration::plus)
                 }
             }
 
@@ -52,17 +52,17 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
 
             when (event.type) {
                 EventType.PASS -> {
-                    currentPlayerPossessing = (event as TwoPlayerEvent).toPlayer
+                    currentParticipantPossessing = (event as TwoPlayerEvent).toParticipant
                 }
                 EventType.GOAL -> {
-                    currentPlayerPossessing = null
+                    currentParticipantPossessing = null
                     currentTeamPossessing = null
                     isStopped = true
                     // Начинаем отсчет времени между поинтами от момента гола
                     lastBetweenPointsStart = event.occurredAt
                 }
                 EventType.PULL -> {
-                    val pullTeam = teamByPlayerId.getValue((event as OnePlayerEvent).player)
+                    val pullTeam = teamByParticipantId.getValue((event as OnePlayerEvent).participant)
                     // Добавляем во время между поинтами только чистый отрезок между окончанием предыдущего поинта
                     // и текущим пуллом, исключая таймауты и халфтайм.
                     val between = if (lastBetweenPointsStart != null) {
@@ -80,21 +80,21 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                 EventType.BRICK -> { }
                 EventType.TURNOVER -> {
                     val ope = event as OnePlayerEvent
-                    currentTeamPossessing = teamByPlayerId.getValue(ope.player)
-                    currentPlayerPossessing = ope.player
+                    currentTeamPossessing = teamByParticipantId.getValue(ope.participant)
+                    currentParticipantPossessing = ope.participant
                 }
                 EventType.BLOCK_MARKER, EventType.BLOCK_FIELD, EventType.DROP -> {
                     currentTeamPossessing = null
-                    currentPlayerPossessing = null
+                    currentParticipantPossessing = null
                 }
                 EventType.INTERCEPTION -> {
                     val tpe = event as TwoPlayerEvent
-                    currentTeamPossessing = teamByPlayerId.getValue(tpe.toPlayer)
-                    currentPlayerPossessing = tpe.toPlayer
+                    currentTeamPossessing = teamByParticipantId.getValue(tpe.toParticipant)
+                    currentParticipantPossessing = tpe.toParticipant
                 }
                 EventType.CALLAHAN -> {
                     currentTeamPossessing = null
-                    currentPlayerPossessing = null
+                    currentParticipantPossessing = null
                     isStopped = true
                     // Кэллахан завершает поинт
                     lastBetweenPointsStart = event.occurredAt
@@ -115,7 +115,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     }
                 }
                 EventType.HALFTIME_START -> {
-                    currentPlayerPossessing = null
+                    currentParticipantPossessing = null
                     currentTeamPossessing = null
                     isStopped = true
                 }
@@ -138,7 +138,7 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
             .minus(timeSpentOnHalftime)
 
         val newPlayerStats = previousStatisticsState.playerStatistics.map { stats ->
-            val possession = playerPossessionTime.getOrDefault(stats.playerId, Duration.ZERO)
+            val possession = participantPossessionTime.getOrDefault(stats.participantId, Duration.ZERO)
             stats.copy(time = stats.time.copy(totalPossessionTime = possession))
         }.toMutableList()
 

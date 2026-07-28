@@ -83,4 +83,15 @@ class EventServiceImplTest : MatchAbstractTest() {
 
         assertEquals(events, eventService.getAllEventsOfMatch(MATCH.id).map { it.event })
     }
+
+    @Test
+    fun `Сохраненное событие с совпадающими участниками остается читаемым`() {
+        val participantId = PLAYERS_1[0].id
+        val legacyEvent = TwoPlayerEvent(participantId, participantId, now(), EventType.PASS)
+
+        val stored = eventService.create(legacyEvent, MATCH.id)
+
+        assertEquals(legacyEvent, eventService.get(stored.id, MATCH.id)?.event)
+        assertEquals(legacyEvent, matchService.getOrThrow(MATCH.id).events.single())
+    }
 }
