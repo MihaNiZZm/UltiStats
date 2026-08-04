@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  branch-name:
+    name: Validate branch name
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          pattern='^((agent/)?(issue|feature|bugfix|chore|hotfix)/[0-9]+-|agent/(issue|feature|bugfix|chore|hotfix)-[0-9]+-)[a-z0-9]+(-[a-z0-9]+)*$'
+          if [[ "$BRANCH_NAME" =~ $pattern ]]; then
+            echo "Branch name is valid: $BRANCH_NAME"
+          else
+            echo "Invalid branch name: $BRANCH_NAME"
+            echo "Expected format: [agent/]<type>/<issue-number>-<description>"
+            echo "Examples: issue/7-add-ci, agent/issue/7-add-ci, feature/12-player-statistics"
+            exit 1
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew build
