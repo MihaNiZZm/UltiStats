@@ -18,13 +18,13 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref }}
         run: |
-          pattern='^(issue|feature|bugfix|chore|hotfix)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+          pattern='^((agent/)?(issue|feature|bugfix|chore|hotfix)/[0-9]+-|agent/(issue|feature|bugfix|chore|hotfix)-[0-9]+-)[a-z0-9]+(-[a-z0-9]+)*$'
           if [[ "$BRANCH_NAME" =~ $pattern ]]; then
             echo "Branch name is valid: $BRANCH_NAME"
           else
             echo "Invalid branch name: $BRANCH_NAME"
-            echo "Expected format: <type>/<issue-number>-<description>"
-            echo "Examples: issue/7-add-ci, feature/12-player-statistics"
+            echo "Expected format: [agent/]<type>/<issue-number>-<description>"
+            echo "Examples: issue/7-add-ci, agent/issue/7-add-ci, feature/12-player-statistics"
             exit 1
           fi
 
