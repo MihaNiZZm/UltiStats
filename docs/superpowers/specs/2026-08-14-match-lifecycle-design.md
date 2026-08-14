@@ -149,6 +149,8 @@ sealed interface MatchCommandResult<out T> {
 
 Первоначальный набор кодов:
 
+- `INVALID_REQUEST` для общего отказа в применении некорректного запроса;
+- `RESOURCE_NOT_FOUND` для отсутствующего целевого матча или события;
 - `MATCH_NOT_IN_PROGRESS`;
 - `MATCH_ALREADY_STARTED`;
 - `MATCH_NOT_STARTED`;
@@ -160,7 +162,7 @@ sealed interface MatchCommandResult<out T> {
 - `EVENT_BEFORE_START`;
 - `EVENT_OUT_OF_ORDER`.
 
-Новые коды без доказанной необходимости в #76 не добавляются.
+Новые коды без доказанной необходимости в #76 не добавляются. `INVALID_REQUEST` и `RESOURCE_NOT_FOUND` необходимы, чтобы выполнить уже согласованный контракт обязательного стабильного `code` для `400` и `404`; это не lifecycle-нарушения.
 
 ## Транзакции и конкуренция
 
