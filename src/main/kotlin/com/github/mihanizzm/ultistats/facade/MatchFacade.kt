@@ -12,6 +12,8 @@ import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
+import com.github.mihanizzm.ultistats.validation.match.MatchProblem
+import com.github.mihanizzm.ultistats.validation.match.MatchProblemCode
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -66,24 +68,21 @@ class MatchFacade(
         return MatchResponse.from(match, teams.associateBy { it.id })
     }
 
-    fun create(request: CreateMatchRequest): MatchResponse? {
-        if (request.teamIds.size != 2 || request.teamIds.distinct().size != 2) return null
-        val teams = teamService.getAllInList(request.teamIds)
-        if (teams.size != request.teamIds.size) {
-            return null
-        }
+    fun create(request: CreateMatchRequest): MatchCommandResult<MatchResponse> {
+        validateTeamSelection(request.teamIds)?.let { return it }
         val match = Match(
             id = UUID.randomUUID(),
             teamIds = request.teamIds,
             plannedStartTimestamp = request.plannedStartTimestamp,
         )
         matchService.create(match)
-        return MatchResponse.from(matchService.getOrThrow(match.id), teams.associateBy { it.id })
+        return MatchCommandResult.Success(matchService.getOrThrow(match.id).toResponse())
     }
 
-    fun update(id: UUID, request: UpdateMatchRequest): MatchResponse? {
+    fun update(id: UUID, request: UpdateMatchRequest): MatchCommandResult<MatchResponse> {
+        request.teamIds?.let { validateTeamSelection(it)?.let { rejection -> return rejection } }
         val result = matchService.update(id, request.teamIds, request.plannedStartTimestamp)
-        return result.toNullableResponse()
+        return result.toResponse()
     }
 
     fun delete(id: UUID): Boolean {
@@ -92,23 +91,36 @@ class MatchFacade(
         return true
     }
 
-    fun startMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
-        return matchService.startMatch(id, request.timestamp).toNullableResponse()
+    fun startMatch(id: UUID, request: MatchTimestampRequest): MatchCommandResult<MatchResponse> {
+        return matchService.startMatch(id, request.timestamp).toResponse()
     }
 
-    fun endMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
-        return matchService.endMatch(id, request.timestamp).toNullableResponse()
+    fun endMatch(id: UUID, request: MatchTimestampRequest): MatchCommandResult<MatchResponse> {
+        return matchService.endMatch(id, request.timestamp).toResponse()
     }
 
-    private fun MatchCommandResult<Match>.toNullableResponse(): MatchResponse? = when (this) {
+    private fun validateTeamSelection(teamIds: List<UUID>): MatchCommandResult.InvalidRequest? = when {
+        teamIds.size != 2 || teamIds.distinct().size != 2 -> invalidRequest("A match must have exactly two distinct teams")
+        teamService.getAllInList(teamIds).size != teamIds.size -> invalidRequest("All selected teams must exist and be active")
+        else -> null
+    }
+
+    private fun invalidRequest(detail: String) = MatchCommandResult.InvalidRequest(
+        MatchProblem(MatchProblemCode.INVALID_REQUEST, "Invalid match request", detail),
+    )
+
+    private fun MatchCommandResult<Match>.toResponse(): MatchCommandResult<MatchResponse> = when (this) {
         is MatchCommandResult.Success -> {
-            val teams = teamService.getAllInListIncludingDeleted(value.teamIds)
-            MatchResponse.from(value, teams.associateBy { it.id })
+            MatchCommandResult.Success(value.toResponse())
         }
-        MatchCommandResult.NotFound,
-        is MatchCommandResult.InvalidRequest,
-        is MatchCommandResult.InvalidState,
-        is MatchCommandResult.Conflict,
-        -> null
+        MatchCommandResult.NotFound -> MatchCommandResult.NotFound
+        is MatchCommandResult.InvalidRequest -> this
+        is MatchCommandResult.InvalidState -> this
+        is MatchCommandResult.Conflict -> this
+    }
+
+    private fun Match.toResponse(): MatchResponse {
+        val teams = teamService.getAllInListIncludingDeleted(teamIds)
+        return MatchResponse.from(this, teams.associateBy { it.id })
     }
 }

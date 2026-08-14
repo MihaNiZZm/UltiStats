@@ -10,12 +10,17 @@ import com.github.mihanizzm.ultistats.dto.response.MatchListItemResponse
 import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.facade.MatchFacade
 import com.github.mihanizzm.ultistats.model.MatchStatus
+import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
+import com.github.mihanizzm.ultistats.validation.match.MatchProblem
+import com.github.mihanizzm.ultistats.validation.match.MatchProblemCode
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import jakarta.servlet.http.HttpServletRequest
+import java.net.URI
 import java.time.Instant
 import java.util.UUID
 
@@ -79,20 +84,26 @@ class MatchController(
 
     @PostMapping
     @Operation(summary = "Создать матч")
-    fun create(@RequestBody request: CreateMatchRequest): ResponseEntity<MatchResponse> =
-        matchFacade.create(request)
-            ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
-            ?: ResponseEntity.badRequest().build()
+    fun create(
+        @RequestBody request: CreateMatchRequest,
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> = matchFacade.create(request).toResponse(
+        successStatus = HttpStatus.CREATED,
+        instance = URI.create(servletRequest.requestURI),
+        matchId = null,
+    )
 
     @PutMapping("/{id}")
     @Operation(summary = "Обновить матч (частичное обновление)")
     fun update(
         @PathVariable id: UUID,
-        @RequestBody request: UpdateMatchRequest
-    ): ResponseEntity<MatchResponse> =
-        matchFacade.update(id, request)
-            ?.let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.notFound().build()
+        @RequestBody request: UpdateMatchRequest,
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> = matchFacade.update(id, request).toResponse(
+        successStatus = HttpStatus.OK,
+        instance = URI.create(servletRequest.requestURI),
+        matchId = id,
+    )
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить матч")
@@ -106,18 +117,42 @@ class MatchController(
     fun startMatch(
         @PathVariable id: UUID,
         @RequestBody request: MatchTimestampRequest,
-    ): ResponseEntity<MatchResponse> =
-        matchFacade.startMatch(id, request)
-            ?.let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.badRequest().build()
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> = matchFacade.startMatch(id, request).toResponse(
+        successStatus = HttpStatus.OK,
+        instance = URI.create(servletRequest.requestURI),
+        matchId = id,
+    )
 
     @PostMapping("/{id}/end")
     @Operation(summary = "Завершить матч")
     fun endMatch(
         @PathVariable id: UUID,
         @RequestBody request: MatchTimestampRequest,
-    ): ResponseEntity<MatchResponse> =
-        matchFacade.endMatch(id, request)
-            ?.let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.badRequest().build()
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> = matchFacade.endMatch(id, request).toResponse(
+        successStatus = HttpStatus.OK,
+        instance = URI.create(servletRequest.requestURI),
+        matchId = id,
+    )
+
+    private fun MatchCommandResult<MatchResponse>.toResponse(
+        successStatus: HttpStatus,
+        instance: URI,
+        matchId: UUID?,
+    ): ResponseEntity<*> = when (this) {
+        is MatchCommandResult.Success -> ResponseEntity.status(successStatus).body(value)
+        MatchCommandResult.NotFound -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            notFoundProblem(requireNotNull(matchId)).toProblemDetail(HttpStatus.NOT_FOUND, instance),
+        )
+        is MatchCommandResult.InvalidRequest -> ResponseEntity.badRequest().body(problem.toProblemDetail(HttpStatus.BAD_REQUEST, instance))
+        is MatchCommandResult.InvalidState -> ResponseEntity.status(HttpStatus.CONFLICT).body(problem.toProblemDetail(HttpStatus.CONFLICT, instance))
+        is MatchCommandResult.Conflict -> ResponseEntity.status(HttpStatus.CONFLICT).body(problem.toProblemDetail(HttpStatus.CONFLICT, instance))
+    }
+
+    private fun notFoundProblem(matchId: UUID) = MatchProblem(
+        code = MatchProblemCode.RESOURCE_NOT_FOUND,
+        title = "Resource not found",
+        detail = "Match $matchId not found",
+    )
 }

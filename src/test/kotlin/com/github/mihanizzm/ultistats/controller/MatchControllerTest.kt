@@ -91,6 +91,10 @@ class MatchControllerTest {
                 .content(objectMapper.writeValueAsString(request))
         )
             .andExpect(status().isBadRequest)
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+            .andExpect(jsonPath("$.currentStatus").doesNotExist())
     }
 
     @Test
@@ -323,14 +327,219 @@ class MatchControllerTest {
 
     @Test
     fun `Обновление несуществующего матча возвращает 404`() {
+        val matchId = UUID.randomUUID()
         val updateRequest = UpdateMatchRequest(plannedStartTimestamp = Instant.now())
 
         mockMvc.perform(
-            put("/api/v1/matches/${UUID.randomUUID()}")
+            put("/api/v1/matches/$matchId")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateRequest))
         )
-            .andExpect(status().isNotFound)
+            .andExpectProblem(
+                expectedStatus = 404,
+                code = "RESOURCE_NOT_FOUND",
+                instance = "/api/v1/matches/$matchId",
+            )
+    }
+
+    @Test
+    fun `Обновление матча с некорректным выбором команд возвращает 400`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val updateRequest = UpdateMatchRequest(teamIds = listOf(team1.id))
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpectProblem(
+                expectedStatus = 400,
+                code = "INVALID_REQUEST",
+                instance = "/api/v1/matches/${match.id}",
+            )
+    }
+
+    @Test
+    fun `Обновление начатого матча возвращает состояние блокировки`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        matchService.startMatch(match.id, Instant.parse("2026-08-14T10:00:00Z"))
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(UpdateMatchRequest(plannedStartTimestamp = Instant.parse("2026-08-14T11:00:00Z"))))
+        )
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "MATCH_UPDATE_LOCKED",
+                instance = "/api/v1/matches/${match.id}",
+                currentStatus = "IN_PROGRESS",
+            )
+    }
+
+    @Test
+    fun `Начало матча возвращает сохраненную отметку времени`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val timestamp = Instant.parse("2026-08-14T10:00:00Z")
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/start"), timestamp))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.startedAt").value(timestamp.toString()))
+    }
+
+    @Test
+    fun `Начало несуществующего матча возвращает 404`() {
+        val matchId = UUID.randomUUID()
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/$matchId/start"), Instant.parse("2026-08-14T10:00:00Z")))
+            .andExpectProblem(
+                expectedStatus = 404,
+                code = "RESOURCE_NOT_FOUND",
+                instance = "/api/v1/matches/$matchId/start",
+            )
+    }
+
+    @Test
+    fun `Повторное начало матча возвращает конфликт состояния`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val timestamp = Instant.parse("2026-08-14T10:00:00Z")
+        matchService.startMatch(match.id, timestamp)
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/start"), timestamp.plusSeconds(60)))
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "MATCH_ALREADY_STARTED",
+                instance = "/api/v1/matches/${match.id}/start",
+                currentStatus = "IN_PROGRESS",
+            )
+    }
+
+    @Test
+    fun `Начало завершенного матча возвращает конфликт состояния`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val timestamp = Instant.parse("2026-08-14T10:00:00Z")
+        matchService.startMatch(match.id, timestamp)
+        matchService.endMatch(match.id, timestamp.plusSeconds(60))
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/start"), timestamp.plusSeconds(120)))
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "MATCH_ALREADY_FINISHED",
+                instance = "/api/v1/matches/${match.id}/start",
+                currentStatus = "FINISHED",
+            )
+    }
+
+    @Test
+    fun `Завершение матча возвращает сохраненную отметку времени`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val startedAt = Instant.parse("2026-08-14T10:00:00Z")
+        val endedAt = Instant.parse("2026-08-14T11:00:00Z")
+        matchService.startMatch(match.id, startedAt)
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), endedAt))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("FINISHED"))
+            .andExpect(jsonPath("$.endedAt").value(endedAt.toString()))
+    }
+
+    @Test
+    fun `Завершение несуществующего матча возвращает 404`() {
+        val matchId = UUID.randomUUID()
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/$matchId/end"), Instant.parse("2026-08-14T11:00:00Z")))
+            .andExpectProblem(
+                expectedStatus = 404,
+                code = "RESOURCE_NOT_FOUND",
+                instance = "/api/v1/matches/$matchId/end",
+            )
+    }
+
+    @Test
+    fun `Завершение незапущенного матча возвращает конфликт состояния`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), Instant.parse("2026-08-14T11:00:00Z")))
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "MATCH_NOT_STARTED",
+                instance = "/api/v1/matches/${match.id}/end",
+                currentStatus = "PLANNED",
+            )
+    }
+
+    @Test
+    fun `Повторное завершение матча возвращает конфликт состояния`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val startedAt = Instant.parse("2026-08-14T10:00:00Z")
+        matchService.startMatch(match.id, startedAt)
+        matchService.endMatch(match.id, startedAt.plusSeconds(60))
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), startedAt.plusSeconds(120)))
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "MATCH_ALREADY_FINISHED",
+                instance = "/api/v1/matches/${match.id}/end",
+                currentStatus = "FINISHED",
+            )
+    }
+
+    @Test
+    fun `Завершение до начала матча возвращает конфликт отметок времени`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val startedAt = Instant.parse("2026-08-14T10:00:00Z")
+        matchService.startMatch(match.id, startedAt)
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), startedAt.minusSeconds(1)))
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "END_BEFORE_START",
+                instance = "/api/v1/matches/${match.id}/end",
+            )
+    }
+
+    private fun timestampRequest(
+        request: org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder,
+        timestamp: Instant,
+    ) = request
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(MatchTimestampRequest(timestamp)))
+
+    private fun org.springframework.test.web.servlet.ResultActions.andExpectProblem(
+        expectedStatus: Int,
+        code: String,
+        instance: String,
+        currentStatus: String? = null,
+    ) = apply {
+        andExpect(status().`is`(expectedStatus))
+        andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        andExpect(jsonPath("$.status").value(expectedStatus))
+        andExpect(jsonPath("$.code").value(code))
+        andExpect(jsonPath("$.instance").value(instance))
+        if (currentStatus == null) {
+            andExpect(jsonPath("$.currentStatus").doesNotExist())
+        } else {
+            andExpect(jsonPath("$.currentStatus").value(currentStatus))
+        }
     }
 
     private fun createTestMatchWithTimestamp(team1: Team, team2: Team, plannedStart: Instant): Match {
