@@ -11,6 +11,7 @@ import com.github.mihanizzm.ultistats.dto.response.MatchResponse
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
 import com.github.mihanizzm.ultistats.util.SortingUtils.applySorting
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -81,23 +82,8 @@ class MatchFacade(
     }
 
     fun update(id: UUID, request: UpdateMatchRequest): MatchResponse? {
-        val existingMatch = matchService.get(id) ?: return null
-
-        val newTeamIds = request.teamIds ?: existingMatch.teamIds
-        if (newTeamIds.size != 2 || newTeamIds.distinct().size != 2) return null
-        if (newTeamIds != existingMatch.teamIds && existingMatch.events.isNotEmpty()) return null
-        val teams = teamService.getAllInList(newTeamIds)
-        val teamsById = teams.associateBy { it.id }
-        if (teams.size != newTeamIds.size) {
-            return null
-        }
-
-        val updatedMatch = existingMatch.copy(
-            teamIds = newTeamIds,
-            plannedStartTimestamp = request.plannedStartTimestamp ?: existingMatch.plannedStartTimestamp,
-        )
-        matchService.update(updatedMatch)
-        return MatchResponse.from(matchService.getOrThrow(id), teamsById)
+        val result = matchService.update(id, request.teamIds, request.plannedStartTimestamp)
+        return result.toNullableResponse()
     }
 
     fun delete(id: UUID): Boolean {
@@ -107,20 +93,22 @@ class MatchFacade(
     }
 
     fun startMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
-        val match = matchService.get(id) ?: return null
-        if (!matchService.startMatch(id, request.timestamp)) {
-            return null
-        }
-        val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
-        return MatchResponse.from(match, teams.associateBy { it.id })
+        return matchService.startMatch(id, request.timestamp).toNullableResponse()
     }
 
     fun endMatch(id: UUID, request: MatchTimestampRequest): MatchResponse? {
-        val match = matchService.get(id) ?: return null
-        if (!matchService.endMatch(id, request.timestamp)) {
-            return null
+        return matchService.endMatch(id, request.timestamp).toNullableResponse()
+    }
+
+    private fun MatchCommandResult<Match>.toNullableResponse(): MatchResponse? = when (this) {
+        is MatchCommandResult.Success -> {
+            val teams = teamService.getAllInListIncludingDeleted(value.teamIds)
+            MatchResponse.from(value, teams.associateBy { it.id })
         }
-        val teams = teamService.getAllInListIncludingDeleted(match.teamIds)
-        return MatchResponse.from(match, teams.associateBy { it.id })
+        MatchCommandResult.NotFound,
+        is MatchCommandResult.InvalidRequest,
+        is MatchCommandResult.InvalidState,
+        is MatchCommandResult.Conflict,
+        -> null
     }
 }

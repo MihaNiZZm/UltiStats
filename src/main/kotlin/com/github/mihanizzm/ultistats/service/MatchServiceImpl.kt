@@ -13,6 +13,12 @@ import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchParticipantRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchTeamRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamRepository
+import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
+import com.github.mihanizzm.ultistats.validation.match.MatchLifecycleDecision
+import com.github.mihanizzm.ultistats.validation.match.MatchLifecyclePolicy
+import com.github.mihanizzm.ultistats.validation.match.MatchProblem
+import com.github.mihanizzm.ultistats.validation.match.MatchProblemCode
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamPlayerRepository
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
@@ -26,6 +32,8 @@ class MatchServiceImpl(
     private val matchParticipantRepository: SpringDataMatchParticipantRepository,
     private val teamPlayerRepository: SpringDataTeamPlayerRepository,
     private val eventRepository: SpringDataEventRepository,
+    private val teamRepository: SpringDataTeamRepository,
+    private val lifecyclePolicy: MatchLifecyclePolicy,
 ) : MatchService {
     override fun get(matchId: UUID): Match? =
         matchRepository.findByIdAndDeletedAtIsNull(matchId)?.hydrate(includeEvents = true)
@@ -40,11 +48,29 @@ class MatchServiceImpl(
     }
 
     @Transactional
-    override fun update(match: Match) {
-        val storedTeamIds = matchTeamRepository.findAllByMatchIdOrderByPosition(match.id).map { it.teamId }
-        matchRepository.save(match)
-        if (storedTeamIds != match.teamIds) replaceParticipants(match.id, match.teamIds)
+    override fun update(
+        matchId: UUID,
+        teamIds: List<UUID>?,
+        plannedStartTimestamp: Instant?,
+    ): MatchCommandResult<Match> {
+        val match = getForUpdate(matchId)?.hydrate(includeEvents = true) ?: return MatchCommandResult.NotFound
+        lifecyclePolicy.validateUpdate(match).toCommandRejection()?.let { return it }
+
+        val updatedTeamIds = teamIds ?: match.teamIds
+        invalidTeamSelection(updatedTeamIds, updatedTeamIds != match.teamIds && match.events.isNotEmpty())?.let { return it }
+
+        val updatedMatch = match.copy(
+            teamIds = updatedTeamIds,
+            plannedStartTimestamp = plannedStartTimestamp ?: match.plannedStartTimestamp,
+        )
+        matchRepository.save(updatedMatch)
+        if (updatedTeamIds != match.teamIds) replaceParticipants(matchId, updatedTeamIds)
+        return MatchCommandResult.Success(readHydratedForUpdate(matchId))
     }
+
+    @Transactional
+    override fun update(match: Match): MatchCommandResult<Match> =
+        update(match.id, match.teamIds, match.plannedStartTimestamp)
 
     override fun delete(matchId: UUID) {
         get(matchId)?.let {
@@ -91,21 +117,26 @@ class MatchServiceImpl(
         }
     }
 
-    override fun startMatch(matchId: UUID, timestamp: Instant): Boolean {
-        val match = getOrThrow(matchId)
-        if (match.startedAt != null) return false
-        match.startedAt = timestamp
-        matchRepository.save(match)
-        return true
+    @Transactional
+    override fun startMatch(matchId: UUID, timestamp: Instant): MatchCommandResult<Match> {
+        val match = getForUpdate(matchId)?.hydrate(includeEvents = true) ?: return MatchCommandResult.NotFound
+        lifecyclePolicy.validateStart(match, timestamp).toCommandRejection()?.let { return it }
+
+        matchRepository.save(match.copy(startedAt = timestamp))
+        return MatchCommandResult.Success(readHydratedForUpdate(matchId))
     }
 
-    override fun endMatch(matchId: UUID, timestamp: Instant): Boolean {
-        val match = getOrThrow(matchId)
-        if (match.startedAt == null || match.endedAt != null) return false
-        match.endedAt = timestamp
-        matchRepository.save(match)
-        return true
+    @Transactional
+    override fun endMatch(matchId: UUID, timestamp: Instant): MatchCommandResult<Match> {
+        val match = getForUpdate(matchId)?.hydrate(includeEvents = true) ?: return MatchCommandResult.NotFound
+        lifecyclePolicy.validateFinish(match, timestamp).toCommandRejection()?.let { return it }
+
+        matchRepository.save(match.copy(endedAt = timestamp))
+        return MatchCommandResult.Success(readHydratedForUpdate(matchId))
     }
+
+    @Transactional(Transactional.TxType.MANDATORY)
+    override fun getForUpdate(matchId: UUID): Match? = matchRepository.findByIdForUpdate(matchId)
 
     private fun Match.hydrate(includeEvents: Boolean): Match {
         // The API still consumes Match as an aggregate. Rebuild its transient read fields from
@@ -155,4 +186,29 @@ class MatchServiceImpl(
         }
         matchParticipantRepository.saveAll(participants)
     }
+
+    private fun invalidTeamSelection(teamIds: List<UUID>, changingTeamsWithActiveEvents: Boolean): MatchCommandResult.InvalidRequest? =
+        when {
+            teamIds.size != 2 || teamIds.distinct().size != 2 -> invalidRequest(
+                "A match must have exactly two distinct teams",
+            )
+            teamRepository.findAllByIdInAndDeletedAtIsNull(teamIds).size != teamIds.size -> invalidRequest(
+                "All selected teams must exist and be active",
+            )
+            changingTeamsWithActiveEvents -> invalidRequest("Teams cannot be changed after events have been recorded")
+            else -> null
+        }
+
+    private fun invalidRequest(detail: String) = MatchCommandResult.InvalidRequest(
+        MatchProblem(MatchProblemCode.INVALID_REQUEST, "Invalid match request", detail),
+    )
+
+    private fun MatchLifecycleDecision.toCommandRejection(): MatchCommandResult<Nothing>? = when (this) {
+        MatchLifecycleDecision.Allowed -> null
+        is MatchLifecycleDecision.InvalidState -> MatchCommandResult.InvalidState(problem)
+        is MatchLifecycleDecision.Conflict -> MatchCommandResult.Conflict(problem)
+    }
+
+    private fun readHydratedForUpdate(matchId: UUID): Match =
+        requireNotNull(getForUpdate(matchId)) { "Locked match $matchId disappeared" }.hydrate(includeEvents = true)
 }
