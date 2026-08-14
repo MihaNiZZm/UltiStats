@@ -72,6 +72,7 @@ class StatisticsControllerTest {
         players1 = p1
         players2 = p2
         match = createTestMatch(team1, team2)
+        matchService.startMatch(match.id, Instant.parse("2025-01-01T00:00:00Z"))
     }
 
     @Test

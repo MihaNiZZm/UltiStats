@@ -6,6 +6,8 @@ import com.github.mihanizzm.ultistats.dto.response.EventResponse
 import com.github.mihanizzm.ultistats.facade.EventFacade
 import com.github.mihanizzm.ultistats.facade.EventResult
 import com.github.mihanizzm.ultistats.model.events.Event
+import com.github.mihanizzm.ultistats.validation.match.MatchProblem
+import com.github.mihanizzm.ultistats.validation.match.MatchProblemCode
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -15,6 +17,8 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import jakarta.servlet.http.HttpServletRequest
+import java.net.URI
 import java.util.UUID
 
 @RestController
@@ -79,13 +83,16 @@ class EventController(
                 ],
             )],
         )
-        @RequestBody request: CreateEventRequest
-    ): ResponseEntity<EventResponse> =
+        @RequestBody request: CreateEventRequest,
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> =
         when (val result = eventFacade.create(matchId, request)) {
             is EventResult.Success -> ResponseEntity.status(HttpStatus.CREATED).body(result.response)
-            is EventResult.NotFound -> ResponseEntity.notFound().build()
-            is EventResult.BadRequest -> ResponseEntity.badRequest().build()
-            else -> ResponseEntity.internalServerError().build()
+            is EventResult.NotFound -> notFound(matchId, null, servletRequest)
+            is EventResult.BadRequest -> badRequest(servletRequest)
+            is EventResult.InvalidState -> conflict(result.problem, servletRequest)
+            is EventResult.Conflict -> conflict(result.problem, servletRequest)
+            else -> ResponseEntity.internalServerError().build<Any>()
         }
 
     @PatchMapping("/{eventId}")
@@ -93,25 +100,53 @@ class EventController(
     fun update(
         @PathVariable matchId: UUID,
         @PathVariable eventId: UUID,
-        @RequestBody request: UpdateEventRequest
-    ): ResponseEntity<EventResponse> =
+        @RequestBody request: UpdateEventRequest,
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> =
         when (val result = eventFacade.edit(matchId, eventId, request)) {
             is EventResult.Success -> ResponseEntity.ok(result.response)
-            is EventResult.NotFound -> ResponseEntity.notFound().build()
-            is EventResult.BadRequest -> ResponseEntity.badRequest().build()
-            is EventResult.MethodNotAllowed -> ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build()
-            else -> ResponseEntity.internalServerError().build()
+            is EventResult.NotFound -> notFound(matchId, eventId, servletRequest)
+            is EventResult.BadRequest -> badRequest(servletRequest)
+            is EventResult.MethodNotAllowed -> ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build<Any>()
+            is EventResult.InvalidState -> conflict(result.problem, servletRequest)
+            is EventResult.Conflict -> conflict(result.problem, servletRequest)
+            else -> ResponseEntity.internalServerError().build<Any>()
         }
 
     @DeleteMapping("/{eventId}")
     @Operation(summary = "Удалить событие по ID")
     fun delete(
         @PathVariable matchId: UUID,
-        @PathVariable eventId: UUID
-    ): ResponseEntity<Unit> =
-        when (eventFacade.delete(matchId, eventId)) {
-            is EventResult.Deleted -> ResponseEntity.noContent().build()
-            is EventResult.NotFound -> ResponseEntity.notFound().build()
-            else -> ResponseEntity.internalServerError().build()
+        @PathVariable eventId: UUID,
+        servletRequest: HttpServletRequest,
+    ): ResponseEntity<*> =
+        when (val result = eventFacade.delete(matchId, eventId)) {
+            is EventResult.Deleted -> ResponseEntity.noContent().build<Any>()
+            is EventResult.NotFound -> notFound(matchId, eventId, servletRequest)
+            is EventResult.InvalidState -> conflict(result.problem, servletRequest)
+            is EventResult.Conflict -> conflict(result.problem, servletRequest)
+            else -> ResponseEntity.internalServerError().build<Any>()
         }
+
+    private fun notFound(matchId: UUID, eventId: UUID?, request: HttpServletRequest): ResponseEntity<*> {
+        val detail = if (eventId == null) "Match $matchId not found"
+        else "Match $matchId or event $eventId not found"
+        val problem = MatchProblem(MatchProblemCode.RESOURCE_NOT_FOUND, "Resource not found", detail)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(problem.toProblemDetail(HttpStatus.NOT_FOUND, URI.create(request.requestURI)))
+    }
+
+    private fun badRequest(request: HttpServletRequest): ResponseEntity<*> {
+        val problem = MatchProblem(
+            MatchProblemCode.INVALID_REQUEST,
+            "Invalid event request",
+            "The event request is malformed or references invalid match participants",
+        )
+        return ResponseEntity.badRequest()
+            .body(problem.toProblemDetail(HttpStatus.BAD_REQUEST, URI.create(request.requestURI)))
+    }
+
+    private fun conflict(problem: MatchProblem, request: HttpServletRequest): ResponseEntity<*> =
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(problem.toProblemDetail(HttpStatus.CONFLICT, URI.create(request.requestURI)))
 }

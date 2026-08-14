@@ -4,29 +4,26 @@ import com.github.mihanizzm.ultistats.MatchAbstractTest
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
+import com.github.mihanizzm.ultistats.service.result.EventCommandResult
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 @Suppress("NonAsciiCharacters")
 class EventServiceImplTest : MatchAbstractTest() {
 
-    private fun now() = Instant.now().truncatedTo(ChronoUnit.MICROS)
-
     @BeforeEach
     fun setup() {
         MATCH.events.clear()
-        matchService.update(MATCH)
     }
 
     @Test
     fun `Событие регистрируется`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT, EventType.PULL)
 
-        eventService.create(event, MATCH.id)
+        assertIs<EventCommandResult.Success>(eventService.create(event, MATCH.id))
 
         val match = matchService.getOrThrow(MATCH.id)
         assertEquals(1, match.events.size)
@@ -35,11 +32,11 @@ class EventServiceImplTest : MatchAbstractTest() {
 
     @Test
     fun `Событие изменяется`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT, EventType.PULL)
         val newEvent = OnePlayerEvent(PLAYERS_1[1].id, event.occurredAt, EventType.PULL)
 
-        val stored = eventService.create(event, MATCH.id)
-        eventService.update(stored.id, newEvent, MATCH.id)
+        val stored = assertIs<EventCommandResult.Success>(eventService.create(event, MATCH.id)).event
+        assertIs<EventCommandResult.Success>(eventService.update(stored.id, newEvent, MATCH.id))
 
         val match = matchService.getOrThrow(MATCH.id)
         assertEquals(1, match.events.size)
@@ -47,40 +44,44 @@ class EventServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
-    fun `Получаем исключение при изменении, если события с таким индексом не существует`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
+    fun `Изменение отсутствующего события возвращает NotFound`() {
+        val event = OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT, EventType.PULL)
 
-        assertThrows<IllegalArgumentException> { eventService.update(java.util.UUID.randomUUID(), event, MATCH.id) }
+        assertIs<EventCommandResult.NotFound>(eventService.update(java.util.UUID.randomUUID(), event, MATCH.id))
     }
 
     @Test
     fun `Событие удаляется`() {
-        val event = OnePlayerEvent(PLAYERS_1[0].id, now(), EventType.PULL)
+        val event = OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT, EventType.PULL)
 
-        val stored = eventService.create(event, MATCH.id)
-        eventService.remove(stored.id, MATCH.id)
+        val stored = assertIs<EventCommandResult.Success>(eventService.create(event, MATCH.id)).event
+        assertIs<EventCommandResult.Deleted>(eventService.remove(stored.id, MATCH.id))
 
         val match = matchService.getOrThrow(MATCH.id)
         assertEquals(0, match.events.size)
     }
 
     @Test
-    fun `Удаление отсутствующего события возвращает false`() {
-        assertEquals(false, eventService.remove(java.util.UUID.randomUUID(), MATCH.id))
+    fun `Удаление отсутствующего события возвращает NotFound`() {
+        assertIs<EventCommandResult.NotFound>(eventService.remove(java.util.UUID.randomUUID(), MATCH.id))
     }
 
     @Test
     fun `Выводится список всех событий`() {
         val events = listOf(
-            OnePlayerEvent(PLAYERS_2[0].id, now(), EventType.PULL),
-            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, now(), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, now(), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, now(), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, now(), EventType.GOAL),
+            OnePlayerEvent(PLAYERS_2[0].id, EVENT_AT, EventType.PULL),
+            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, EVENT_AT.plusSeconds(1), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, EVENT_AT.plusSeconds(2), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, EVENT_AT.plusSeconds(3), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, EVENT_AT.plusSeconds(4), EventType.GOAL),
         )
 
-        events.forEach { eventService.create(it, MATCH.id) }
+        events.forEach { assertIs<EventCommandResult.Success>(eventService.create(it, MATCH.id)) }
 
         assertEquals(events, eventService.getAllEventsOfMatch(MATCH.id).map { it.event })
+    }
+
+    companion object {
+        private val EVENT_AT = Instant.parse("2026-08-14T10:00:00Z")
     }
 }

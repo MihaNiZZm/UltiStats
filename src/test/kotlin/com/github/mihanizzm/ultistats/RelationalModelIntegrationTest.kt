@@ -110,6 +110,9 @@ class RelationalModelIntegrationTest {
             Instant.parse("2026-07-13T12:00:00Z"),
             EventType.GOAL,
         )
+        assertIs<MatchCommandResult.Success<Match>>(
+            matchService.startMatch(match.id, Instant.parse("2026-07-13T11:00:00Z")),
+        )
 
         eventService.create(goal, match.id)
         assertEquals(1, matchService.getOrThrow(match.id).teamScores.single { it.teamId == firstTeam.id }.score)
@@ -165,6 +168,9 @@ class RelationalModelIntegrationTest {
             match.id,
         )
 
+        assertIs<MatchCommandResult.Success<Match>>(
+            matchService.startMatch(match.id, Instant.parse("2026-07-13T11:00:00Z")),
+        )
         eventService.create(assertNotNull(event), match.id)
         val statistics = statisticsService.recalculateMatchStatistics(match.id)
 
@@ -191,7 +197,10 @@ class RelationalModelIntegrationTest {
     }
 
     @Test
-    fun `planned match with events allows timestamp-only update`() {
+    fun `in-progress match with events rejects timestamp-only update`() {
+        assertIs<MatchCommandResult.Success<Match>>(
+            matchService.startMatch(match.id, Instant.parse("2026-08-14T09:00:00Z")),
+        )
         eventService.create(
             TwoPlayerEvent(
                 firstPlayer.id,
@@ -201,13 +210,13 @@ class RelationalModelIntegrationTest {
             ),
             match.id,
         )
-        val plannedStart = Instant.parse("2026-08-14T09:00:00Z")
+        val plannedStart = Instant.parse("2026-08-14T08:00:00Z")
 
         val result = matchService.update(match.id, null, plannedStart)
 
-        val success = assertIs<MatchCommandResult.Success<Match>>(result)
-        assertEquals(plannedStart, success.value.plannedStartTimestamp)
-        assertEquals(plannedStart, matchService.getOrThrow(match.id).plannedStartTimestamp)
+        val rejection = assertIs<MatchCommandResult.InvalidState>(result)
+        assertEquals(MatchProblemCode.MATCH_UPDATE_LOCKED, rejection.problem.code)
+        assertNull(matchService.getOrThrow(match.id).plannedStartTimestamp)
     }
 
     @Test
@@ -255,11 +264,11 @@ class RelationalModelIntegrationTest {
     @Test
     fun `finish before latest persisted event is rejected without persisting an end timestamp`() {
         val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
+        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
         eventService.create(
             TwoPlayerEvent(firstPlayer.id, secondPlayer.id, eventTimestamp, EventType.PASS),
             match.id,
         )
-        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
 
         val result = matchService.endMatch(match.id, eventTimestamp.minusSeconds(1))
 
@@ -273,11 +282,11 @@ class RelationalModelIntegrationTest {
     @Test
     fun `finish at latest persisted event timestamp returns finished match`() {
         val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
+        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp))
         eventService.create(
             TwoPlayerEvent(firstPlayer.id, secondPlayer.id, eventTimestamp, EventType.PASS),
             match.id,
         )
-        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp))
 
         val result = matchService.endMatch(match.id, eventTimestamp)
 
