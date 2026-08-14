@@ -64,20 +64,22 @@ class MatchLifecyclePolicyTest {
 
     @Test
     fun `завершение не может предшествовать старту или последнему событию но равенство допустимо`() {
-        val match = match(MatchStatus.IN_PROGRESS).withEvent(EVENT_AT)
+        val matchWithEvent = match(MatchStatus.IN_PROGRESS).withEvent(EVENT_AT)
 
-        assertDecision(policy.validateFinish(match, START_AT.minusSeconds(1)), conflict(MatchProblemCode.END_BEFORE_START))
-        assertDecision(policy.validateFinish(match, EVENT_AT.minusSeconds(1)), conflict(MatchProblemCode.END_BEFORE_LAST_EVENT))
-        assertDecision(policy.validateFinish(match, EVENT_AT), allowed())
+        assertDecision(policy.validateFinish(match(MatchStatus.IN_PROGRESS), START_AT), allowed())
+        assertDecision(policy.validateFinish(matchWithEvent, START_AT.minusSeconds(1)), conflict(MatchProblemCode.END_BEFORE_START))
+        assertDecision(policy.validateFinish(matchWithEvent, EVENT_AT.minusSeconds(1)), conflict(MatchProblemCode.END_BEFORE_LAST_EVENT))
+        assertDecision(policy.validateFinish(matchWithEvent, EVENT_AT), allowed())
     }
 
     @Test
     fun `новое событие не может предшествовать старту или последнему событию но равенство допустимо`() {
-        val match = match(MatchStatus.IN_PROGRESS).withEvent(EVENT_AT)
+        val matchWithEvent = match(MatchStatus.IN_PROGRESS).withEvent(EVENT_AT)
 
-        assertDecision(policy.validateEventCreation(match, START_AT.minusSeconds(1)), conflict(MatchProblemCode.EVENT_BEFORE_START))
-        assertDecision(policy.validateEventCreation(match, EVENT_AT.minusSeconds(1)), conflict(MatchProblemCode.EVENT_OUT_OF_ORDER))
-        assertDecision(policy.validateEventCreation(match, EVENT_AT), allowed())
+        assertDecision(policy.validateEventCreation(match(MatchStatus.IN_PROGRESS), START_AT), allowed())
+        assertDecision(policy.validateEventCreation(matchWithEvent, START_AT.minusSeconds(1)), conflict(MatchProblemCode.EVENT_BEFORE_START))
+        assertDecision(policy.validateEventCreation(matchWithEvent, EVENT_AT.minusSeconds(1)), conflict(MatchProblemCode.EVENT_OUT_OF_ORDER))
+        assertDecision(policy.validateEventCreation(matchWithEvent, EVENT_AT), allowed())
     }
 
     @Test
