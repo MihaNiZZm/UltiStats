@@ -10,7 +10,9 @@ import com.github.mihanizzm.ultistats.dto.request.TwoPlayerEventRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateEventRequest
 import com.github.mihanizzm.ultistats.dto.response.EventResponse
 import com.github.mihanizzm.ultistats.factory.EventFactory
+import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.StoredEvent
 import com.github.mihanizzm.ultistats.model.events.SystemEvent
 import com.github.mihanizzm.ultistats.model.events.TeamEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
@@ -57,8 +59,21 @@ class EventFacade(
 
     fun edit(matchId: UUID, eventId: UUID, request: UpdateEventRequest): EventResult {
         if (matchService.get(matchId) == null) return EventResult.NotFound
-        val stored = eventService.get(eventId, matchId) ?: return EventResult.NotFound
-        if (request.type != stored.event.type) return EventResult.BadRequest
+        return try {
+            eventService.update(eventId, matchId) { stored -> mergeUpdate(stored, request, matchId) }.toFacadeResult()
+        } catch (_: InvalidEventUpdateException) {
+            EventResult.BadRequest
+        } catch (_: UnsupportedEventUpdateException) {
+            EventResult.MethodNotAllowed
+        }
+    }
+
+    private fun mergeUpdate(
+        stored: StoredEvent,
+        request: UpdateEventRequest,
+        matchId: UUID,
+    ): Event {
+        if (request.type != stored.event.type) throw InvalidEventUpdateException()
         val merged: CreateEventRequest = when {
             stored.event is OnePlayerEvent && request is OnePlayerEventPatchRequest ->
                 OnePlayerEventRequest(stored.event.type, stored.event.occurredAt, request.participantId)
@@ -71,11 +86,10 @@ class EventFacade(
                 )
             stored.event is TeamEvent && request is TeamEventPatchRequest ->
                 TeamEventRequest(stored.event.type, stored.event.occurredAt, request.teamId)
-            stored.event is SystemEvent -> return EventResult.MethodNotAllowed
-            else -> return EventResult.BadRequest
+            stored.event is SystemEvent -> throw UnsupportedEventUpdateException()
+            else -> throw InvalidEventUpdateException()
         }
-        val event = eventFactory.createFromRequest(merged, matchId) ?: return EventResult.BadRequest
-        return eventService.update(eventId, event, matchId).toFacadeResult()
+        return eventFactory.createFromRequest(merged, matchId) ?: throw InvalidEventUpdateException()
     }
 
     fun delete(matchId: UUID, eventId: UUID): EventResult {
@@ -91,3 +105,6 @@ class EventFacade(
         is EventCommandResult.Conflict -> EventResult.Conflict(problem)
     }
 }
+
+private class InvalidEventUpdateException : RuntimeException()
+private class UnsupportedEventUpdateException : RuntimeException()

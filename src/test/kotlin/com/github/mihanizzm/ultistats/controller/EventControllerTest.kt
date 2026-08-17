@@ -9,6 +9,7 @@ import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
+import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
@@ -16,6 +17,9 @@ import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -24,6 +28,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
@@ -33,8 +38,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
 @SpringBootTest
@@ -49,6 +58,7 @@ class EventControllerTest {
     @Autowired lateinit var teamPlayerService: TeamPlayerService
     @Autowired lateinit var statisticsService: StatisticsService
     @Autowired lateinit var eventFixture: EventControllerTestFixture
+    @MockitoSpyBean lateinit var eventService: EventService
 
     private lateinit var match: Match
     private lateinit var team1: Team
@@ -165,6 +175,43 @@ class EventControllerTest {
     }
 
     @Test
+    fun `concurrent complementary partial patches preserve both participant changes`() {
+        val unknowns = matchService.getOrThrow(match.id).participantsByTeam.getValue(team1.id)
+            .filter { it.kind == MatchParticipantKind.UNKNOWN }
+        val eventId = UUID.fromString(createAndGetId(mapOf(
+            "type" to "PASS",
+            "occurredAt" to EVENT_OCCURRED_AT,
+            "fromParticipantId" to unknowns[0].participantId,
+            "toParticipantId" to unknowns[1].participantId,
+        )))
+        val staleReads = CountDownLatch(2)
+        Mockito.doAnswer { invocation ->
+            val stored = invocation.callRealMethod()
+            staleReads.countDown()
+            check(staleReads.await(5, TimeUnit.SECONDS)) { "Concurrent PATCH requests did not both read the event" }
+            stored
+        }.`when`(eventService).get(eventId, match.id)
+
+        Executors.newFixedThreadPool(2).use { executor ->
+            val fromPatch = executor.submit<MvcResult> {
+                mockMvc.perform(patchTwoPlayerEvent(eventId, fromParticipantId = player1.id)).andReturn()
+            }
+            val toPatch = executor.submit<MvcResult> {
+                mockMvc.perform(patchTwoPlayerEvent(eventId, toParticipantId = player2.id)).andReturn()
+            }
+
+            assertEquals(200, fromPatch.get(10, TimeUnit.SECONDS).response.status)
+            assertEquals(200, toPatch.get(10, TimeUnit.SECONDS).response.status)
+        }
+        Mockito.reset(eventService)
+
+        mockMvc.perform(get("/api/v1/matches/${match.id}/events/$eventId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fromParticipantId").value(player1.id.toString()))
+            .andExpect(jsonPath("$.toParticipantId").value(player2.id.toString()))
+    }
+
+    @Test
     fun `missing match and event mutations still return not found`() {
         val missingMatchId = UUID.randomUUID()
         val missingEventId = UUID.randomUUID()
@@ -180,6 +227,19 @@ class EventControllerTest {
                 expectedStatus = 404,
                 code = "RESOURCE_NOT_FOUND",
                 instance = "/api/v1/matches/${match.id}/events/$missingEventId",
+            )
+    }
+
+    @Test
+    fun `deleting missing event in planned match returns not found`() {
+        val plannedMatch = createPlannedMatch()
+        val missingEventId = UUID.randomUUID()
+
+        mockMvc.perform(delete("/api/v1/matches/${plannedMatch.id}/events/$missingEventId"))
+            .andExpectProblem(
+                expectedStatus = 404,
+                code = "RESOURCE_NOT_FOUND",
+                instance = "/api/v1/matches/${plannedMatch.id}/events/$missingEventId",
             )
     }
 
@@ -200,6 +260,24 @@ class EventControllerTest {
             "type" to "PASS", "occurredAt" to "2026-07-14T10:00:00Z",
             "fromParticipantId" to player1.id, "toParticipantId" to opponent.id,
         ))).andExpectProblem(
+            expectedStatus = 400,
+            code = "INVALID_REQUEST",
+            instance = "/api/v1/matches/${match.id}/events",
+        )
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+        "{\"type\":\"TURNOVER\"",
+        "{\"type\":\"UNKNOWN\",\"occurredAt\":\"2026-07-14T10:00:00Z\",\"participantId\":\"11111111-1111-1111-1111-111111111111\"}",
+        "{\"type\":\"TURNOVER\",\"occurredAt\":\"2026-07-14T10:00:00Z\"}",
+    ])
+    fun `invalid event JSON returns INVALID_REQUEST ProblemDetail`(body: String) {
+        mockMvc.perform(
+            post("/api/v1/matches/${match.id}/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body),
+        ).andExpectProblem(
             expectedStatus = 400,
             code = "INVALID_REQUEST",
             instance = "/api/v1/matches/${match.id}/events",
@@ -396,6 +474,18 @@ class EventControllerTest {
         patch("/api/v1/matches/$matchId/events/$eventId")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(mapOf("type" to "TURNOVER", "participantId" to participantId)))
+
+    private fun patchTwoPlayerEvent(
+        eventId: UUID,
+        fromParticipantId: UUID? = null,
+        toParticipantId: UUID? = null,
+    ) = patch("/api/v1/matches/${match.id}/events/$eventId")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(mapOf(
+            "type" to "PASS",
+            "fromParticipantId" to fromParticipantId,
+            "toParticipantId" to toParticipantId,
+        )))
 
     private fun org.springframework.test.web.servlet.ResultActions.andExpectProblem(
         expectedStatus: Int,

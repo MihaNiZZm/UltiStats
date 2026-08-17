@@ -36,7 +36,7 @@ class EventServiceImplTest : MatchAbstractTest() {
         val newEvent = OnePlayerEvent(PLAYERS_1[1].id, event.occurredAt, EventType.PULL)
 
         val stored = assertIs<EventCommandResult.Success>(eventService.create(event, MATCH.id)).event
-        assertIs<EventCommandResult.Success>(eventService.update(stored.id, newEvent, MATCH.id))
+        assertIs<EventCommandResult.Success>(eventService.update(stored.id, MATCH.id) { newEvent })
 
         val match = matchService.getOrThrow(MATCH.id)
         assertEquals(1, match.events.size)
@@ -47,7 +47,7 @@ class EventServiceImplTest : MatchAbstractTest() {
     fun `Изменение отсутствующего события возвращает NotFound`() {
         val event = OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT, EventType.PULL)
 
-        assertIs<EventCommandResult.NotFound>(eventService.update(java.util.UUID.randomUUID(), event, MATCH.id))
+        assertIs<EventCommandResult.NotFound>(eventService.update(java.util.UUID.randomUUID(), MATCH.id) { event })
     }
 
     @Test

@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody as OpenApiRequestBod
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.*
 import jakarta.servlet.http.HttpServletRequest
 import java.net.URI
@@ -149,4 +150,7 @@ class EventController(
     private fun conflict(problem: MatchProblem, request: HttpServletRequest): ResponseEntity<*> =
         ResponseEntity.status(HttpStatus.CONFLICT)
             .body(problem.toProblemDetail(HttpStatus.CONFLICT, URI.create(request.requestURI)))
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadableRequest(request: HttpServletRequest): ResponseEntity<*> = badRequest(request)
 }

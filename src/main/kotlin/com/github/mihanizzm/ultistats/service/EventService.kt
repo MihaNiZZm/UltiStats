@@ -8,7 +8,7 @@ import java.util.UUID
 interface EventService {
     fun create(event: Event, matchId: UUID): EventCommandResult
     fun get(eventId: UUID, matchId: UUID): StoredEvent?
-    fun update(eventId: UUID, event: Event, matchId: UUID): EventCommandResult
+    fun update(eventId: UUID, matchId: UUID, update: (StoredEvent) -> Event): EventCommandResult
     fun remove(eventId: UUID, matchId: UUID): EventCommandResult
     fun getAllEventsOfMatch(matchId: UUID): List<StoredEvent>
 }

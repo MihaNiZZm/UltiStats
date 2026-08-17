@@ -39,12 +39,13 @@ class EventServiceImpl(
     }
 
     @Transactional
-    override fun update(eventId: UUID, event: Event, matchId: UUID): EventCommandResult {
+    override fun update(eventId: UUID, matchId: UUID, update: (StoredEvent) -> Event): EventCommandResult {
         val match = matchService.getForUpdate(matchId) ?: return EventCommandResult.NotFound
-        lifecyclePolicy.validateEventUpdate(match).toCommandRejection()?.let { return it }
-
         val existing = eventRepository.findByIdAndMatchIdAndDeletedAtIsNull(eventId, matchId)
             ?: return EventCommandResult.NotFound
+        lifecyclePolicy.validateEventUpdate(match).toCommandRejection()?.let { return it }
+
+        val event = update(existing.toStored())
         require(event.type == existing.eventType) { "Event type is immutable" }
         require(event.occurredAt == existing.occurredAt) { "Event occurrence time is immutable" }
         val updated = EventEntity.fromDomain(existing.id, matchId, existing.sequenceNumber, event)
@@ -56,10 +57,10 @@ class EventServiceImpl(
     @Transactional
     override fun remove(eventId: UUID, matchId: UUID): EventCommandResult {
         val match = matchService.getForUpdate(matchId) ?: return EventCommandResult.NotFound
-        lifecyclePolicy.validateEventDeletion(match).toCommandRejection()?.let { return it }
-
         val existing = eventRepository.findByIdAndMatchIdAndDeletedAtIsNull(eventId, matchId)
             ?: return EventCommandResult.NotFound
+        lifecyclePolicy.validateEventDeletion(match).toCommandRejection()?.let { return it }
+
         eventRepository.save(existing.copy(deletedAt = Instant.now()))
         matchService.recalculateScore(matchId)
         return EventCommandResult.Deleted
