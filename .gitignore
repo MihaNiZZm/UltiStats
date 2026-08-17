@@ -47,8 +47,5 @@ CLAUDE.md
 ### Qwen Code ###
 .qwen
 
-### Git worktrees ###
-.worktrees/
-
 ### Persistence Data ###
 data/
