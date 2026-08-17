@@ -379,6 +379,25 @@ class MatchControllerTest {
     }
 
     @Test
+    fun `Обновление начатого матча с некорректным выбором команд возвращает 400`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        matchService.startMatch(match.id, Instant.parse("2026-08-14T10:00:00Z"))
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(UpdateMatchRequest(teamIds = listOf(team1.id))))
+        )
+            .andExpectProblem(
+                expectedStatus = 400,
+                code = "INVALID_REQUEST",
+                instance = "/api/v1/matches/${match.id}",
+            )
+    }
+
+    @Test
     fun `Обновление начатого матча возвращает состояние блокировки`() {
         val team1 = createTestTeam("Команда 1")
         val team2 = createTestTeam("Команда 2")

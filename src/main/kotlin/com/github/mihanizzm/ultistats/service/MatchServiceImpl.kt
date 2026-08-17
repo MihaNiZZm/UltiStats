@@ -54,10 +54,9 @@ class MatchServiceImpl(
         plannedStartTimestamp: Instant?,
     ): MatchCommandResult<Match> {
         val match = getForUpdate(matchId)?.hydrate(includeEvents = true) ?: return MatchCommandResult.NotFound
-        lifecyclePolicy.validateUpdate(match).toCommandRejection()?.let { return it }
-
         val updatedTeamIds = teamIds ?: match.teamIds
         invalidTeamSelection(updatedTeamIds, updatedTeamIds != match.teamIds && match.events.isNotEmpty())?.let { return it }
+        lifecyclePolicy.validateUpdate(match).toCommandRejection()?.let { return it }
 
         val updatedMatch = match.copy(
             teamIds = updatedTeamIds,
