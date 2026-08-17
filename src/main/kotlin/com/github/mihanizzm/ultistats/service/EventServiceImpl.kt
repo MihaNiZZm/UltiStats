@@ -43,9 +43,9 @@ class EventServiceImpl(
         val match = matchService.getForUpdate(matchId) ?: return EventCommandResult.NotFound
         val existing = eventRepository.findByIdAndMatchIdAndDeletedAtIsNull(eventId, matchId)
             ?: return EventCommandResult.NotFound
+        val event = update(existing.toStored())
         lifecyclePolicy.validateEventUpdate(match).toCommandRejection()?.let { return it }
 
-        val event = update(existing.toStored())
         require(event.type == existing.eventType) { "Event type is immutable" }
         require(event.occurredAt == existing.occurredAt) { "Event occurrence time is immutable" }
         val updated = EventEntity.fromDomain(existing.id, matchId, existing.sequenceNumber, event)

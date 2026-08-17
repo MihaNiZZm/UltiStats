@@ -6,8 +6,10 @@ import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.MatchParticipantKind
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
+import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.SystemEvent
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
@@ -160,6 +162,40 @@ class EventControllerTest {
                 instance = "/api/v1/matches/${plannedMatch.id}/events/$eventId",
                 currentStatus = "PLANNED",
             )
+    }
+
+    @Test
+    fun `invalid semantic patch in planned match remains bad request`() {
+        val plannedMatch = createPlannedMatch()
+        val eventId = persistLegacyEvent(plannedMatch.id)
+
+        mockMvc.perform(
+            patch("/api/v1/matches/${plannedMatch.id}/events/$eventId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf(
+                    "type" to "DROP",
+                    "participantId" to player1.id,
+                ))),
+        ).andExpectProblem(
+            expectedStatus = 400,
+            code = "INVALID_REQUEST",
+            instance = "/api/v1/matches/${plannedMatch.id}/events/$eventId",
+        )
+    }
+
+    @Test
+    fun `unsupported system event patch in planned match remains method not allowed`() {
+        val plannedMatch = createPlannedMatch()
+        val eventId = persistLegacyEvent(
+            plannedMatch.id,
+            SystemEvent(EVENT_OCCURRED_AT, EventType.HALFTIME_START),
+        )
+
+        mockMvc.perform(
+            patch("/api/v1/matches/${plannedMatch.id}/events/$eventId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"type":"HALFTIME_START"}"""),
+        ).andExpect(status().isMethodNotAllowed)
     }
 
     @Test
@@ -462,10 +498,13 @@ class EventControllerTest {
         matchService.endMatch(it.id, MATCH_ENDED_AT)
     }
 
-    private fun persistLegacyEvent(matchId: UUID): UUID {
+    private fun persistLegacyEvent(
+        matchId: UUID,
+        event: Event = OnePlayerEvent(player1.id, EVENT_OCCURRED_AT, EventType.TURNOVER),
+    ): UUID {
         val eventId = UUID.randomUUID()
         eventFixture.persist(
-            EventEntity.fromDomain(eventId, matchId, 1, OnePlayerEvent(player1.id, EVENT_OCCURRED_AT, EventType.TURNOVER)),
+            EventEntity.fromDomain(eventId, matchId, 1, event),
         )
         return eventId
     }
