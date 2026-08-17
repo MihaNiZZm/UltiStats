@@ -343,6 +343,23 @@ class MatchControllerTest {
     }
 
     @Test
+    fun `Обновление несуществующего матча с некорректным выбором команд возвращает 404`() {
+        val matchId = UUID.randomUUID()
+        val updateRequest = UpdateMatchRequest(teamIds = listOf(UUID.randomUUID()))
+
+        mockMvc.perform(
+            put("/api/v1/matches/$matchId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+        )
+            .andExpectProblem(
+                expectedStatus = 404,
+                code = "RESOURCE_NOT_FOUND",
+                instance = "/api/v1/matches/$matchId",
+            )
+    }
+
+    @Test
     fun `Обновление матча с некорректным выбором команд возвращает 400`() {
         val team1 = createTestTeam("Команда 1")
         val team2 = createTestTeam("Команда 2")

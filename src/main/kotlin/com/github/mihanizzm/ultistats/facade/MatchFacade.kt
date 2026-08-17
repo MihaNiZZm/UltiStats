@@ -80,7 +80,6 @@ class MatchFacade(
     }
 
     fun update(id: UUID, request: UpdateMatchRequest): MatchCommandResult<MatchResponse> {
-        request.teamIds?.let { validateTeamSelection(it)?.let { rejection -> return rejection } }
         val result = matchService.update(id, request.teamIds, request.plannedStartTimestamp)
         return result.toResponse()
     }
