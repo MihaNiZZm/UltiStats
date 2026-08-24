@@ -10,12 +10,16 @@ import com.github.mihanizzm.ultistats.dto.request.TwoPlayerEventRequest
 import com.github.mihanizzm.ultistats.dto.request.UpdateEventRequest
 import com.github.mihanizzm.ultistats.dto.response.EventResponse
 import com.github.mihanizzm.ultistats.factory.EventFactory
+import com.github.mihanizzm.ultistats.model.events.Event
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.StoredEvent
 import com.github.mihanizzm.ultistats.model.events.SystemEvent
 import com.github.mihanizzm.ultistats.model.events.TeamEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
+import com.github.mihanizzm.ultistats.service.result.EventCommandResult
+import com.github.mihanizzm.ultistats.validation.match.MatchProblem
 import org.springframework.stereotype.Component
 import java.util.UUID
 
@@ -26,6 +30,8 @@ sealed class EventResult {
     object NotFound : EventResult()
     object BadRequest : EventResult()
     object MethodNotAllowed : EventResult()
+    data class InvalidState(val problem: MatchProblem) : EventResult()
+    data class Conflict(val problem: MatchProblem) : EventResult()
 }
 
 @Component
@@ -48,17 +54,26 @@ class EventFacade(
     fun create(matchId: UUID, request: CreateEventRequest): EventResult {
         if (matchService.get(matchId) == null) return EventResult.NotFound
         val event = eventFactory.createFromRequest(request, matchId) ?: return EventResult.BadRequest
-        return try {
-            EventResult.Success(EventResponse.from(eventService.create(event, matchId)))
-        } catch (_: IllegalArgumentException) {
-            EventResult.BadRequest
-        }
+        return eventService.create(event, matchId).toFacadeResult()
     }
 
     fun edit(matchId: UUID, eventId: UUID, request: UpdateEventRequest): EventResult {
         if (matchService.get(matchId) == null) return EventResult.NotFound
-        val stored = eventService.get(eventId, matchId) ?: return EventResult.NotFound
-        if (request.type != stored.event.type) return EventResult.BadRequest
+        return try {
+            eventService.update(eventId, matchId) { stored -> mergeUpdate(stored, request, matchId) }.toFacadeResult()
+        } catch (_: InvalidEventUpdateException) {
+            EventResult.BadRequest
+        } catch (_: UnsupportedEventUpdateException) {
+            EventResult.MethodNotAllowed
+        }
+    }
+
+    private fun mergeUpdate(
+        stored: StoredEvent,
+        request: UpdateEventRequest,
+        matchId: UUID,
+    ): Event {
+        if (request.type != stored.event.type) throw InvalidEventUpdateException()
         val merged: CreateEventRequest = when {
             stored.event is OnePlayerEvent && request is OnePlayerEventPatchRequest ->
                 OnePlayerEventRequest(stored.event.type, stored.event.occurredAt, request.participantId)
@@ -71,15 +86,25 @@ class EventFacade(
                 )
             stored.event is TeamEvent && request is TeamEventPatchRequest ->
                 TeamEventRequest(stored.event.type, stored.event.occurredAt, request.teamId)
-            stored.event is SystemEvent -> return EventResult.MethodNotAllowed
-            else -> return EventResult.BadRequest
+            stored.event is SystemEvent -> throw UnsupportedEventUpdateException()
+            else -> throw InvalidEventUpdateException()
         }
-        val event = eventFactory.createFromRequest(merged, matchId) ?: return EventResult.BadRequest
-        return EventResult.Success(EventResponse.from(eventService.update(eventId, event, matchId)))
+        return eventFactory.createFromRequest(merged, matchId) ?: throw InvalidEventUpdateException()
     }
 
     fun delete(matchId: UUID, eventId: UUID): EventResult {
         if (matchService.get(matchId) == null) return EventResult.NotFound
-        return if (eventService.remove(eventId, matchId)) EventResult.Deleted else EventResult.NotFound
+        return eventService.remove(eventId, matchId).toFacadeResult()
+    }
+
+    private fun EventCommandResult.toFacadeResult(): EventResult = when (this) {
+        is EventCommandResult.Success -> EventResult.Success(EventResponse.from(event))
+        EventCommandResult.Deleted -> EventResult.Deleted
+        EventCommandResult.NotFound -> EventResult.NotFound
+        is EventCommandResult.InvalidState -> EventResult.InvalidState(problem)
+        is EventCommandResult.Conflict -> EventResult.Conflict(problem)
     }
 }
+
+private class InvalidEventUpdateException : RuntimeException()
+private class UnsupportedEventUpdateException : RuntimeException()

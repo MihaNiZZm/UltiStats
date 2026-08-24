@@ -16,7 +16,9 @@ import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
+import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
 import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
+import com.github.mihanizzm.ultistats.validation.match.MatchProblemCode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -107,6 +110,9 @@ class RelationalModelIntegrationTest {
             Instant.parse("2026-07-13T12:00:00Z"),
             EventType.GOAL,
         )
+        assertIs<MatchCommandResult.Success<Match>>(
+            matchService.startMatch(match.id, Instant.parse("2026-07-13T11:00:00Z")),
+        )
 
         eventService.create(goal, match.id)
         assertEquals(1, matchService.getOrThrow(match.id).teamScores.single { it.teamId == firstTeam.id }.score)
@@ -162,6 +168,9 @@ class RelationalModelIntegrationTest {
             match.id,
         )
 
+        assertIs<MatchCommandResult.Success<Match>>(
+            matchService.startMatch(match.id, Instant.parse("2026-07-13T11:00:00Z")),
+        )
         eventService.create(assertNotNull(event), match.id)
         val statistics = statisticsService.recalculateMatchStatistics(match.id)
 
@@ -173,5 +182,128 @@ class RelationalModelIntegrationTest {
             1,
             statistics.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches,
         )
+    }
+
+    @Test
+    fun `planned match update returns the re-read persisted match`() {
+        val plannedStart = Instant.parse("2026-08-14T10:00:00Z")
+
+        val result = matchService.update(match.id, null, plannedStart)
+
+        val success = assertIs<MatchCommandResult.Success<Match>>(result)
+        val persisted = matchService.getOrThrow(match.id)
+        assertEquals(plannedStart, success.value.plannedStartTimestamp)
+        assertEquals(success.value, persisted)
+    }
+
+    @Test
+    fun `in-progress match with events rejects timestamp-only update`() {
+        assertIs<MatchCommandResult.Success<Match>>(
+            matchService.startMatch(match.id, Instant.parse("2026-08-14T09:00:00Z")),
+        )
+        eventService.create(
+            TwoPlayerEvent(
+                firstPlayer.id,
+                secondPlayer.id,
+                Instant.parse("2026-08-14T10:00:00Z"),
+                EventType.PASS,
+            ),
+            match.id,
+        )
+        val plannedStart = Instant.parse("2026-08-14T08:00:00Z")
+
+        val result = matchService.update(match.id, null, plannedStart)
+
+        val rejection = assertIs<MatchCommandResult.InvalidState>(result)
+        assertEquals(MatchProblemCode.MATCH_UPDATE_LOCKED, rejection.problem.code)
+        assertNull(matchService.getOrThrow(match.id).plannedStartTimestamp)
+    }
+
+    @Test
+    fun `update after match start is rejected without changing persisted match`() {
+        val startedAt = Instant.parse("2026-08-14T10:00:00Z")
+        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, startedAt))
+        val beforeUpdate = matchService.getOrThrow(match.id)
+
+        val result = matchService.update(
+            match.id,
+            listOf(secondTeam.id, firstTeam.id),
+            Instant.parse("2026-08-14T11:00:00Z"),
+        )
+
+        val rejection = assertIs<MatchCommandResult.InvalidState>(result)
+        assertEquals(MatchProblemCode.MATCH_UPDATE_LOCKED, rejection.problem.code)
+        assertEquals(beforeUpdate, matchService.getOrThrow(match.id))
+    }
+
+    @Test
+    fun `start persists client timestamp once and rejects repeat start`() {
+        val startedAt = Instant.parse("2026-08-14T10:00:00Z")
+
+        val firstStart = matchService.startMatch(match.id, startedAt)
+        val secondStart = matchService.startMatch(match.id, Instant.parse("2026-08-14T10:01:00Z"))
+
+        val success = assertIs<MatchCommandResult.Success<Match>>(firstStart)
+        assertEquals(startedAt, success.value.startedAt)
+        val rejection = assertIs<MatchCommandResult.InvalidState>(secondStart)
+        assertEquals(MatchProblemCode.MATCH_ALREADY_STARTED, rejection.problem.code)
+        assertEquals(startedAt, matchService.getOrThrow(match.id).startedAt)
+    }
+
+    @Test
+    fun `finish of planned match is rejected without persisting an end timestamp`() {
+        val result = matchService.endMatch(match.id, Instant.parse("2026-08-14T10:00:00Z"))
+
+        val rejection = assertIs<MatchCommandResult.InvalidState>(result)
+        assertEquals(MatchProblemCode.MATCH_NOT_STARTED, rejection.problem.code)
+        val persisted = matchService.getOrThrow(match.id)
+        assertNull(persisted.startedAt)
+        assertNull(persisted.endedAt)
+    }
+
+    @Test
+    fun `finish before latest persisted event is rejected without persisting an end timestamp`() {
+        val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
+        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
+        eventService.create(
+            TwoPlayerEvent(firstPlayer.id, secondPlayer.id, eventTimestamp, EventType.PASS),
+            match.id,
+        )
+
+        val result = matchService.endMatch(match.id, eventTimestamp.minusSeconds(1))
+
+        val rejection = assertIs<MatchCommandResult.Conflict>(result)
+        assertEquals(MatchProblemCode.END_BEFORE_LAST_EVENT, rejection.problem.code)
+        val persisted = matchService.getOrThrow(match.id)
+        assertNull(persisted.endedAt)
+        assertEquals(listOf(eventTimestamp), persisted.events.map { it.occurredAt })
+    }
+
+    @Test
+    fun `finish at latest persisted event timestamp returns finished match`() {
+        val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
+        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp))
+        eventService.create(
+            TwoPlayerEvent(firstPlayer.id, secondPlayer.id, eventTimestamp, EventType.PASS),
+            match.id,
+        )
+
+        val result = matchService.endMatch(match.id, eventTimestamp)
+
+        val success = assertIs<MatchCommandResult.Success<Match>>(result)
+        assertEquals(eventTimestamp, success.value.endedAt)
+        assertEquals(com.github.mihanizzm.ultistats.model.MatchStatus.FINISHED, success.value.status)
+        assertEquals(success.value, matchService.getOrThrow(match.id))
+    }
+
+    @Test
+    fun `missing match commands return not found and do not create a match`() {
+        val missingMatchId = UUID.randomUUID()
+
+        assertIs<MatchCommandResult.NotFound>(matchService.update(missingMatchId, null, Instant.now()))
+        assertIs<MatchCommandResult.NotFound>(matchService.startMatch(missingMatchId, Instant.now()))
+        assertIs<MatchCommandResult.NotFound>(matchService.endMatch(missingMatchId, Instant.now()))
+
+        assertNull(matchService.get(missingMatchId))
     }
 }

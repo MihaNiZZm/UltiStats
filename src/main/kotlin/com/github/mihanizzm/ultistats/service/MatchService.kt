@@ -2,6 +2,7 @@ package com.github.mihanizzm.ultistats.service
 
 import com.github.mihanizzm.ultistats.dto.request.MatchFilterRequest
 import com.github.mihanizzm.ultistats.model.Match
+import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
 import java.time.Instant
 import java.util.UUID
 
@@ -12,7 +13,13 @@ interface MatchService {
 
     fun create(match: Match)
 
-    fun update(match: Match)
+    fun update(
+        matchId: UUID,
+        teamIds: List<UUID>?,
+        plannedStartTimestamp: Instant?,
+    ): MatchCommandResult<Match>
+
+    fun update(match: Match): MatchCommandResult<Match>
 
     fun delete(matchId: UUID)
 
@@ -26,17 +33,9 @@ interface MatchService {
 
     fun recalculateScore(matchId: UUID)
 
-    /**
-     * Начать матч. Устанавливает startedAt в переданное время.
-     * @param timestamp время начала матча, переданное клиентом
-     * @return true если матч успешно начат, false если матч уже начат
-     */
-    fun startMatch(matchId: UUID, timestamp: Instant): Boolean
+    fun startMatch(matchId: UUID, timestamp: Instant): MatchCommandResult<Match>
 
-    /**
-     * Завершить матч. Устанавливает endedAt в переданное время.
-     * @param timestamp время окончания матча, переданное клиентом
-     * @return true если матч успешно завершён, false если матч не начат или уже завершён
-     */
-    fun endMatch(matchId: UUID, timestamp: Instant): Boolean
+    fun endMatch(matchId: UUID, timestamp: Instant): MatchCommandResult<Match>
+
+    fun getForUpdate(matchId: UUID): Match?
 }

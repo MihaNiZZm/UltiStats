@@ -14,6 +14,7 @@ import com.github.mihanizzm.ultistats.service.TeamPlayerService
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import java.time.Instant
 import java.util.UUID
 
 @SpringBootTest
@@ -144,6 +145,7 @@ abstract class MatchAbstractTest {
         PLAYERS_2.forEachIndexed { index, player -> teamPlayerService.add(TEAM_2.id, player.id, index + 1) }
 
         matchService.create(MATCH)
+        matchService.startMatch(MATCH.id, Instant.parse(START_DATE))
     }
 
     protected fun recalculateTestMatchStatistics(): MatchStatistics {

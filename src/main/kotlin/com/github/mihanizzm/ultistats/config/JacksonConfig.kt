@@ -11,12 +11,15 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.ProblemDetail
+import org.springframework.http.converter.json.ProblemDetailJacksonMixin
 import java.time.Duration
 
 @Configuration
 class JacksonConfig {
     @Bean
     fun objectMapper(): ObjectMapper = ObjectMapper()
+        .addMixIn(ProblemDetail::class.java, ProblemDetailJacksonMixin::class.java)
         .registerModule(JavaTimeModule())
         .registerModule(KotlinModule.Builder().build())
         .setSerializationInclusion(JsonInclude.Include.NON_NULL)
