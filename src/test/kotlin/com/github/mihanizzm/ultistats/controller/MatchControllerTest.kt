@@ -7,6 +7,10 @@ import com.github.mihanizzm.ultistats.dto.request.UpdateMatchRequest
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
+import com.github.mihanizzm.ultistats.model.events.EventType
+import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
+import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
+import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
@@ -35,6 +39,9 @@ class MatchControllerTest {
 
     @Autowired
     lateinit var matchService: MatchService
+
+    @Autowired
+    lateinit var eventService: EventService
 
     @Autowired
     lateinit var teamService: TeamService
@@ -274,8 +281,10 @@ class MatchControllerTest {
 
         // FINISHED
         val finishedMatch = createTestMatch(team1, team2)
-        matchService.startMatch(finishedMatch.id, Instant.now())
-        matchService.endMatch(finishedMatch.id, Instant.now())
+        val finishedAt = Instant.parse("2026-08-14T10:00:00Z")
+        matchService.startMatch(finishedMatch.id, finishedAt.minusSeconds(60))
+        recordCompletedPoint(finishedMatch, finishedAt)
+        matchService.endMatch(finishedMatch.id, finishedAt)
 
         mockMvc.perform(
             get("/api/v1/matches")
@@ -466,6 +475,7 @@ class MatchControllerTest {
         val match = createTestMatch(team1, team2)
         val timestamp = Instant.parse("2026-08-14T10:00:00Z")
         matchService.startMatch(match.id, timestamp)
+        recordCompletedPoint(match, timestamp.plusSeconds(59))
         matchService.endMatch(match.id, timestamp.plusSeconds(60))
 
         mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/start"), timestamp.plusSeconds(120)))
@@ -485,11 +495,31 @@ class MatchControllerTest {
         val startedAt = Instant.parse("2026-08-14T10:00:00Z")
         val endedAt = Instant.parse("2026-08-14T11:00:00Z")
         matchService.startMatch(match.id, startedAt)
+        recordCompletedPoint(match, endedAt.minusSeconds(1))
 
         mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), endedAt))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("FINISHED"))
             .andExpect(jsonPath("$.endedAt").value(endedAt.toString()))
+    }
+
+    @Test
+    fun `Завершение матча до окончания поинта возвращает состояние лога`() {
+        val team1 = createTestTeam("Команда 1")
+        val team2 = createTestTeam("Команда 2")
+        val match = createTestMatch(team1, team2)
+        val startedAt = Instant.parse("2026-08-14T10:00:00Z")
+        matchService.startMatch(match.id, startedAt)
+
+        mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), startedAt.plusSeconds(60)))
+            .andExpectProblem(
+                expectedStatus = 409,
+                code = "MATCH_NOT_AT_POINT_END",
+                instance = "/api/v1/matches/${match.id}/end",
+                currentStatus = "IN_PROGRESS",
+            )
+            .andExpect(jsonPath("$.currentState").value("BEFORE_FIRST_PULL"))
+            .andExpect(jsonPath("$.attemptedEventType").doesNotExist())
     }
 
     @Test
@@ -526,6 +556,7 @@ class MatchControllerTest {
         val match = createTestMatch(team1, team2)
         val startedAt = Instant.parse("2026-08-14T10:00:00Z")
         matchService.startMatch(match.id, startedAt)
+        recordCompletedPoint(match, startedAt.plusSeconds(59))
         matchService.endMatch(match.id, startedAt.plusSeconds(60))
 
         mockMvc.perform(timestampRequest(post("/api/v1/matches/${match.id}/end"), startedAt.plusSeconds(120)))
@@ -611,5 +642,14 @@ class MatchControllerTest {
         players.forEach { playerService.create(it) }
         players.forEachIndexed { index, player -> teamPlayerService.add(teamId, player.id, index + 1) }
         return team
+    }
+
+    private fun recordCompletedPoint(match: Match, goalAt: Instant, type: EventType = EventType.GOAL) {
+        val participants = matchService.getOrThrow(match.id).participantsByTeam.values.flatten()
+        val first = participants[0].participantId
+        val second = participants[1].participantId
+        eventService.create(OnePlayerEvent(first, goalAt.minusSeconds(2), EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(second, goalAt.minusSeconds(1), EventType.PICKUP), match.id)
+        eventService.create(TwoPlayerEvent(first, second, goalAt, type), match.id)
     }
 }

@@ -9,6 +9,7 @@ import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.TeamPlayer
 import com.github.mihanizzm.ultistats.model.events.EventType
+import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamPlayerRepository
 import com.github.mihanizzm.ultistats.service.EventService
@@ -104,20 +105,23 @@ class RelationalModelIntegrationTest {
 
     @Test
     fun `cached score follows active goal events`() {
+        val goalAt = Instant.parse("2026-07-13T12:00:00Z")
         val goal = TwoPlayerEvent(
             firstPlayer.id,
             secondPlayer.id,
-            Instant.parse("2026-07-13T12:00:00Z"),
+            goalAt,
             EventType.GOAL,
         )
         assertIs<MatchCommandResult.Success<Match>>(
             matchService.startMatch(match.id, Instant.parse("2026-07-13T11:00:00Z")),
         )
 
+        eventService.create(OnePlayerEvent(firstPlayer.id, goalAt.minusSeconds(2), EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(secondPlayer.id, goalAt.minusSeconds(1), EventType.PICKUP), match.id)
         eventService.create(goal, match.id)
         assertEquals(1, matchService.getOrThrow(match.id).teamScores.single { it.teamId == firstTeam.id }.score)
 
-        val stored = eventService.getAllEventsOfMatch(match.id).single()
+        val stored = eventService.getAllEventsOfMatch(match.id).single { it.event.type == EventType.GOAL }
         eventService.remove(stored.id, match.id)
         assertEquals(0, matchService.getOrThrow(match.id).teamScores.single { it.teamId == firstTeam.id }.score)
     }
@@ -170,6 +174,14 @@ class RelationalModelIntegrationTest {
 
         assertIs<MatchCommandResult.Success<Match>>(
             matchService.startMatch(match.id, Instant.parse("2026-07-13T11:00:00Z")),
+        )
+        eventService.create(
+            OnePlayerEvent(unknowns[0].participantId, Instant.parse("2026-07-13T11:59:58Z"), EventType.PULL),
+            match.id,
+        )
+        eventService.create(
+            OnePlayerEvent(unknowns[0].participantId, Instant.parse("2026-07-13T11:59:59Z"), EventType.PICKUP),
+            match.id,
         )
         eventService.create(assertNotNull(event), match.id)
         val statistics = statisticsService.recalculateMatchStatistics(match.id)
@@ -265,10 +277,7 @@ class RelationalModelIntegrationTest {
     fun `finish before latest persisted event is rejected without persisting an end timestamp`() {
         val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
         assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
-        eventService.create(
-            TwoPlayerEvent(firstPlayer.id, secondPlayer.id, eventTimestamp, EventType.PASS),
-            match.id,
-        )
+        recordCompletedPoint(eventTimestamp)
 
         val result = matchService.endMatch(match.id, eventTimestamp.minusSeconds(1))
 
@@ -276,17 +285,15 @@ class RelationalModelIntegrationTest {
         assertEquals(MatchProblemCode.END_BEFORE_LAST_EVENT, rejection.problem.code)
         val persisted = matchService.getOrThrow(match.id)
         assertNull(persisted.endedAt)
-        assertEquals(listOf(eventTimestamp), persisted.events.map { it.occurredAt })
+        assertEquals(3, persisted.events.size)
+        assertEquals(eventTimestamp, persisted.events.last().occurredAt)
     }
 
     @Test
     fun `finish at latest persisted event timestamp returns finished match`() {
         val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
-        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp))
-        eventService.create(
-            TwoPlayerEvent(firstPlayer.id, secondPlayer.id, eventTimestamp, EventType.PASS),
-            match.id,
-        )
+        assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
+        recordCompletedPoint(eventTimestamp)
 
         val result = matchService.endMatch(match.id, eventTimestamp)
 
@@ -294,6 +301,12 @@ class RelationalModelIntegrationTest {
         assertEquals(eventTimestamp, success.value.endedAt)
         assertEquals(com.github.mihanizzm.ultistats.model.MatchStatus.FINISHED, success.value.status)
         assertEquals(success.value, matchService.getOrThrow(match.id))
+    }
+
+    private fun recordCompletedPoint(goalAt: Instant, type: EventType = EventType.GOAL) {
+        eventService.create(OnePlayerEvent(firstPlayer.id, goalAt.minusSeconds(2), EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(secondPlayer.id, goalAt.minusSeconds(1), EventType.PICKUP), match.id)
+        eventService.create(TwoPlayerEvent(firstPlayer.id, secondPlayer.id, goalAt, type), match.id)
     }
 
     @Test

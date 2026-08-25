@@ -17,6 +17,7 @@ enum class MatchProblemCode {
     EVENT_BEFORE_START,
     EVENT_OUT_OF_ORDER,
     EVENT_SEQUENCE_VIOLATION,
+    MATCH_NOT_AT_POINT_END,
 }
 
 data class MatchProblem(
