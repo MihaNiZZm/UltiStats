@@ -35,6 +35,41 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
+    fun `Незавершенный пас записывается бросающему`() {
+        MATCH.events.add(
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.INCOMPLETE_PASS),
+        )
+
+        val actual = recalculateTestMatchStatistics()
+
+        assertThat(
+            actual.playerStatistics.first { it.participantId == UUIDS[2] }.attack.incompletePasses,
+        ).isEqualTo(1)
+        assertThat(
+            actual.teamStatistics.first { it.teamId == UUIDS[0] }.attack.allPasses,
+        ).isEqualTo(1)
+    }
+
+    @Test
+    fun `Общий блок учитывается защитнику и команде`() {
+        MATCH.events.add(
+            TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK),
+        )
+
+        val actual = recalculateTestMatchStatistics()
+
+        assertThat(
+            actual.playerStatistics.first { it.participantId == UUIDS[7] }.defense.blocks,
+        ).isEqualTo(1)
+        assertThat(
+            actual.teamStatistics.first { it.teamId == UUIDS[1] }.defense.blocks,
+        ).isEqualTo(1)
+        assertThat(
+            actual.teamStatistics.first { it.teamId == UUIDS[0] }.attack.allPasses,
+        ).isEqualTo(1)
+    }
+
+    @Test
     fun `Статистика перебития в поле записана`() {
         MATCH.events.add(
             TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK_FIELD),
@@ -45,7 +80,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.participantId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnField = 1))
-                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocksAsFieldPlayer = 1))
+                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsFieldPlayer = 1))
                         else -> it
                     }
                 },
@@ -54,7 +89,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.teamId) {
                         UUIDS[0] -> it.copy(attack = it.attack.copy(allPasses = 1))
-                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocksAsFieldPlayer = 1))
+                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsFieldPlayer = 1))
                         else -> it
                     }
                 },
@@ -113,7 +148,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.participantId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnMarker = 1))
-                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocksAsMarker = 1))
+                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsMarker = 1))
                         else -> it
                     }
                 },
@@ -122,7 +157,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.teamId) {
                         UUIDS[0] -> it.copy(attack = it.attack.copy(allPasses = 1))
-                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocksAsMarker = 1))
+                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsMarker = 1))
                         else -> it
                     }
                 },
@@ -298,7 +333,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика перехода владения записана`() {
         MATCH.events.add(
-            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.TURNOVER),
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.PICKUP),
         )
 
         val expectedStats = MatchStatistics(
@@ -327,14 +362,14 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     @Test
     fun `Статистика дропа записана`() {
         MATCH.events.add(
-            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.DROP),
+            OnePlayerEvent(UUIDS[2], Instant.now(), EventType.INCOMPLETE_PASS),
         )
 
         val expectedStats = MatchStatistics(
             playerStatistics = matchParticipantStatistics()
                 .map {
                     when (it.participantId) {
-                        UUIDS[2] -> it.copy(attack = it.attack.copy(drops = 1))
+                        UUIDS[2] -> it.copy(attack = it.attack.copy(incompletePasses = 1))
                         else -> it
                     }
                 },

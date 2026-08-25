@@ -173,7 +173,7 @@ class EventControllerTest {
             patch("/api/v1/matches/${plannedMatch.id}/events/$eventId")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf(
-                    "type" to "DROP",
+                    "type" to "INCOMPLETE_PASS",
                     "participantId" to player1.id,
                 ))),
         ).andExpectProblem(
@@ -281,7 +281,7 @@ class EventControllerTest {
 
     @Test
     fun `one-player event has only its category fields`() {
-        mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
+        mockMvc.perform(postEvent(mapOf("type" to "PICKUP", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").isNotEmpty)
             .andExpect(jsonPath("$.sequenceNumber").value(1))
@@ -304,9 +304,9 @@ class EventControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = [
-        "{\"type\":\"TURNOVER\"",
+        "{\"type\":\"PICKUP\"",
         "{\"type\":\"UNKNOWN\",\"occurredAt\":\"2026-07-14T10:00:00Z\",\"participantId\":\"11111111-1111-1111-1111-111111111111\"}",
-        "{\"type\":\"TURNOVER\",\"occurredAt\":\"2026-07-14T10:00:00Z\"}",
+        "{\"type\":\"PICKUP\",\"occurredAt\":\"2026-07-14T10:00:00Z\"}",
     ])
     fun `invalid event JSON returns INVALID_REQUEST ProblemDetail`(body: String) {
         mockMvc.perform(
@@ -334,7 +334,7 @@ class EventControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.propertyName").value("type"))
             .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.length()").value(14))
-            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.TURNOVER").value("#/components/schemas/OnePlayerEventResponse"))
+            .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.PICKUP").value("#/components/schemas/OnePlayerEventResponse"))
             .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.PASS").value("#/components/schemas/TwoPlayerEventResponse"))
             .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.TIMEOUT_START").value("#/components/schemas/TeamEventResponse"))
             .andExpect(jsonPath("$.components.schemas.EventResponse.discriminator.mapping.HALFTIME_START").value("#/components/schemas/SystemEventResponse"))
@@ -348,7 +348,7 @@ class EventControllerTest {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$examplesPath.length()").value(4))
-            .andExpect(jsonPath("$examplesPath.onePlayerEvent.value.type").value("TURNOVER"))
+            .andExpect(jsonPath("$examplesPath.onePlayerEvent.value.type").value("PICKUP"))
             .andExpect(jsonPath("$examplesPath.onePlayerEvent.value.participantId").exists())
             .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.type").value("PASS"))
             .andExpect(jsonPath("$examplesPath.twoPlayerEvent.value.fromParticipantId").exists())
@@ -371,7 +371,7 @@ class EventControllerTest {
 
     @Test
     fun `event is read patched and deleted by UUID`() {
-        val created = mockMvc.perform(postEvent(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
+        val created = mockMvc.perform(postEvent(mapOf("type" to "PICKUP", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id)))
             .andReturn().response.contentAsString
         val eventId = objectMapper.readTree(created).get("id").asText()
 
@@ -379,7 +379,7 @@ class EventControllerTest {
             .andExpect(status().isOk).andExpect(jsonPath("$.participantId").value(player1.id.toString()))
         mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$eventId")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("type" to "TURNOVER", "participantId" to player2.id))))
+            .content(objectMapper.writeValueAsString(mapOf("type" to "PICKUP", "participantId" to player2.id))))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.participantId").value(player2.id.toString()))
             .andExpect(jsonPath("$.occurredAt").value("2026-07-14T10:00:00Z"))
@@ -390,10 +390,10 @@ class EventControllerTest {
 
     @Test
     fun `event type cannot change and system event cannot be patched`() {
-        val playerEvent = createAndGetId(mapOf("type" to "TURNOVER", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id))
+        val playerEvent = createAndGetId(mapOf("type" to "PICKUP", "occurredAt" to "2026-07-14T10:00:00Z", "participantId" to player1.id))
         mockMvc.perform(patch("/api/v1/matches/${match.id}/events/$playerEvent")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("type" to "DROP", "participantId" to player1.id))))
+            .content(objectMapper.writeValueAsString(mapOf("type" to "INCOMPLETE_PASS", "participantId" to player1.id))))
             .andExpect(status().isBadRequest)
 
         val systemEvent = createAndGetId(mapOf("type" to "HALFTIME_START", "occurredAt" to "2026-07-14T10:01:00Z"))
@@ -460,7 +460,7 @@ class EventControllerTest {
             .first { it.kind == MatchParticipantKind.UNKNOWN }
 
         mockMvc.perform(postEvent(mapOf(
-            "type" to "TURNOVER",
+            "type" to "PICKUP",
             "occurredAt" to "2026-07-14T10:00:00Z",
             "participantId" to unknown.participantId,
         )))
@@ -486,7 +486,7 @@ class EventControllerTest {
     ).get("id").asText()
 
     private fun validTurnover(occurredAt: Instant = EVENT_OCCURRED_AT): Map<String, Any> = mapOf(
-        "type" to "TURNOVER",
+        "type" to "PICKUP",
         "occurredAt" to occurredAt,
         "participantId" to player1.id,
     )
@@ -500,7 +500,7 @@ class EventControllerTest {
 
     private fun persistLegacyEvent(
         matchId: UUID,
-        event: Event = OnePlayerEvent(player1.id, EVENT_OCCURRED_AT, EventType.TURNOVER),
+        event: Event = OnePlayerEvent(player1.id, EVENT_OCCURRED_AT, EventType.PICKUP),
     ): UUID {
         val eventId = UUID.randomUUID()
         eventFixture.persist(
@@ -512,7 +512,7 @@ class EventControllerTest {
     private fun patchEvent(matchId: UUID, eventId: Any, participantId: UUID) =
         patch("/api/v1/matches/$matchId/events/$eventId")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(mapOf("type" to "TURNOVER", "participantId" to participantId)))
+            .content(objectMapper.writeValueAsString(mapOf("type" to "PICKUP", "participantId" to participantId)))
 
     private fun patchTwoPlayerEvent(
         eventId: UUID,

@@ -8,12 +8,13 @@ import java.util.UUID
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes(
-    JsonSubTypes.Type(OnePlayerEventPatchRequest::class, name = "DROP"),
+    JsonSubTypes.Type(OnePlayerEventPatchRequest::class, name = "INCOMPLETE_PASS"),
     JsonSubTypes.Type(OnePlayerEventPatchRequest::class, name = "PULL"),
     JsonSubTypes.Type(OnePlayerEventPatchRequest::class, name = "BRICK"),
-    JsonSubTypes.Type(OnePlayerEventPatchRequest::class, name = "TURNOVER"),
+    JsonSubTypes.Type(OnePlayerEventPatchRequest::class, name = "PICKUP"),
     JsonSubTypes.Type(TwoPlayerEventPatchRequest::class, name = "PASS"),
     JsonSubTypes.Type(TwoPlayerEventPatchRequest::class, name = "GOAL"),
+    JsonSubTypes.Type(TwoPlayerEventPatchRequest::class, name = "BLOCK"),
     JsonSubTypes.Type(TwoPlayerEventPatchRequest::class, name = "BLOCK_MARKER"),
     JsonSubTypes.Type(TwoPlayerEventPatchRequest::class, name = "BLOCK_FIELD"),
     JsonSubTypes.Type(TwoPlayerEventPatchRequest::class, name = "INTERCEPTION"),

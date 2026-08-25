@@ -60,13 +60,13 @@ class EventController(
                     ExampleObject(
                         name = "onePlayerEvent",
                         summary = "Событие с одним игроком",
-                        description = "Допустимые type: DROP, PULL, BRICK, TURNOVER.",
-                        value = """{"type":"TURNOVER","occurredAt":"2026-07-28T12:30:00Z","participantId":"11111111-1111-1111-1111-111111111111"}""",
+                        description = "Допустимые type: INCOMPLETE_PASS, PULL, BRICK, PICKUP.",
+                        value = """{"type":"PICKUP","occurredAt":"2026-07-28T12:30:00Z","participantId":"11111111-1111-1111-1111-111111111111"}""",
                     ),
                     ExampleObject(
                         name = "twoPlayerEvent",
                         summary = "Событие с двумя игроками",
-                        description = "Допустимые type: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION, CALLAHAN.",
+                        description = "Допустимые type: PASS, GOAL, BLOCK, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION, CALLAHAN.",
                         value = """{"type":"PASS","occurredAt":"2026-07-28T12:30:00Z","fromParticipantId":"11111111-1111-1111-1111-111111111111","toParticipantId":"22222222-2222-2222-2222-222222222222"}""",
                     ),
                     ExampleObject(

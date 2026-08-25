@@ -5,7 +5,7 @@ import java.util.UUID
 
 /**
  * Событие с двумя участниками матча.
- * Используется для: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION, CALLAHAN.
+ * Используется для: PASS, GOAL, BLOCK, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION, CALLAHAN.
  */
 data class TwoPlayerEvent(
     val fromParticipant: UUID,

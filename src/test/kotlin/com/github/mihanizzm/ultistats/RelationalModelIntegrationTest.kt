@@ -129,7 +129,7 @@ class RelationalModelIntegrationTest {
 
         val event = eventFactory.createFromRequest(
             OnePlayerEventRequest(
-                type = EventType.TURNOVER,
+                type = EventType.PICKUP,
                 occurredAt = Instant.parse("2026-07-13T12:00:00Z"),
                 participantId = latePlayer.id,
             ),

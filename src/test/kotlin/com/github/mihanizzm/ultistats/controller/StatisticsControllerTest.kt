@@ -121,7 +121,7 @@ class StatisticsControllerTest {
 
         // Добавляем события: подбор и пас
         eventService.create(
-            OnePlayerEvent(player1.id, Instant.now(), EventType.TURNOVER),
+            OnePlayerEvent(player1.id, Instant.now(), EventType.PICKUP),
             match.id
         )
         eventService.create(
@@ -140,7 +140,7 @@ class StatisticsControllerTest {
         // Создаём события с таймаутом для проверки timeStatistics
         val now = Instant.now()
         eventService.create(OnePlayerEvent(players1[0].id, now, EventType.PULL), match.id)
-        eventService.create(OnePlayerEvent(players2[0].id, now.plusSeconds(10), EventType.TURNOVER), match.id)
+        eventService.create(OnePlayerEvent(players2[0].id, now.plusSeconds(10), EventType.PICKUP), match.id)
         eventService.create(TeamEvent(team2.id, now.plusSeconds(15), EventType.TIMEOUT_START), match.id)
         eventService.create(TeamEvent(team2.id, now.plusSeconds(75), EventType.TIMEOUT_END), match.id)
         eventService.create(TwoPlayerEvent(players2[0].id, players2[1].id, now.plusSeconds(90), EventType.PASS), match.id)

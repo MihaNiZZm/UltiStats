@@ -9,7 +9,7 @@ data class PlayerAttackStatistics(
     val saveGoals: Int = 0,
     val dropsOnMarker: Int = 0,
     val dropsOnField: Int = 0,
-    val drops: Int = 0,
+    val incompletePasses: Int = 0,
     val callahanDrops: Int = 0,
     val discPossessions: Int = 0,
     val pulls: Int = 0,
