@@ -364,6 +364,8 @@ class EventControllerTest {
     @ValueSource(strings = [
         "{\"type\":\"PICKUP\"",
         "{\"type\":\"UNKNOWN\",\"occurredAt\":\"2026-07-14T10:00:00Z\",\"participantId\":\"11111111-1111-1111-1111-111111111111\"}",
+        "{\"type\":\"DROP\",\"occurredAt\":\"2026-07-14T10:00:00Z\",\"participantId\":\"11111111-1111-1111-1111-111111111111\"}",
+        "{\"type\":\"TURNOVER\",\"occurredAt\":\"2026-07-14T10:00:00Z\",\"participantId\":\"11111111-1111-1111-1111-111111111111\"}",
         "{\"type\":\"PICKUP\",\"occurredAt\":\"2026-07-14T10:00:00Z\"}",
     ])
     fun `invalid event JSON returns INVALID_REQUEST ProblemDetail`(body: String) {

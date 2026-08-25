@@ -7,13 +7,18 @@ import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
 import com.github.mihanizzm.ultistats.model.statistics.PlayerStatistics
 import com.github.mihanizzm.ultistats.model.statistics.TeamStatistics
+import com.github.mihanizzm.ultistats.service.statistics.IncrementalStatisticsAggregator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import java.time.Instant
 
 @Suppress("NonAsciiCharacters")
 class StatisticsServiceImplTest : MatchAbstractTest() {
+    @Autowired
+    lateinit var incrementalStatisticsAggregator: IncrementalStatisticsAggregator
+
     @BeforeEach
     fun setup() {
         MATCH.events.clear()
@@ -40,7 +45,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
             OnePlayerEvent(UUIDS[2], Instant.now(), EventType.INCOMPLETE_PASS),
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(
             actual.playerStatistics.first { it.participantId == UUIDS[2] }.attack.incompletePasses,
@@ -56,7 +61,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
             TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK),
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(
             actual.playerStatistics.first { it.participantId == UUIDS[7] }.defense.blocks,
@@ -95,7 +100,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -132,7 +137,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -163,7 +168,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -194,7 +199,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -234,7 +239,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -267,7 +272,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -296,7 +301,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -325,7 +330,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -354,7 +359,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -383,7 +388,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 },
         )
 
-        val actual = recalculateTestMatchStatistics()
+        val actual = recalculateIncrementalStatistics()
 
         assertThat(actual).isEqualTo(expectedStats)
     }
@@ -391,4 +396,18 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     private fun matchParticipantStatistics(): List<PlayerStatistics> =
         matchService.getOrThrow(MATCH.id).participantsByTeam.values.flatten()
             .map { PlayerStatistics(it.participantId) }
+
+    private fun recalculateIncrementalStatistics(): MatchStatistics {
+        val match = matchService.getOrThrow(MATCH.id)
+        val initial = MatchStatistics(
+            playerStatistics = matchParticipantStatistics(),
+            teamStatistics = match.teamIds.map(::TeamStatistics),
+        )
+        val teamByParticipantId = match.participantsByTeam.flatMap { (teamId, participants) ->
+            participants.map { it.participantId to teamId }
+        }.toMap()
+        val events = MATCH.events.toList()
+        MATCH.events.clear()
+        return incrementalStatisticsAggregator.aggregate(initial, events, teamByParticipantId)
+    }
 }

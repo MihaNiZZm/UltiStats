@@ -118,14 +118,19 @@ class StatisticsControllerTest {
     fun `Статистика учитывает события матча`() {
         val player1 = players1[0]
         val player2 = players1[1]
+        val now = Instant.now()
 
-        // Добавляем события: подбор и пас
+        // Добавляем валидную последовательность: пулл, подбор и пас
         eventService.create(
-            OnePlayerEvent(player1.id, Instant.now(), EventType.PICKUP),
+            OnePlayerEvent(player1.id, now, EventType.PULL),
             match.id
         )
         eventService.create(
-            TwoPlayerEvent(player1.id, player2.id, Instant.now(), EventType.PASS),
+            OnePlayerEvent(player1.id, now.plusSeconds(1), EventType.PICKUP),
+            match.id
+        )
+        eventService.create(
+            TwoPlayerEvent(player1.id, player2.id, now.plusSeconds(2), EventType.PASS),
             match.id
         )
 
