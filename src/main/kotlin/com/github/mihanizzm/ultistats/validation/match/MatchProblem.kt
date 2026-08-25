@@ -1,6 +1,7 @@
 package com.github.mihanizzm.ultistats.validation.match
 
 import com.github.mihanizzm.ultistats.model.MatchStatus
+import com.github.mihanizzm.ultistats.model.events.EventType
 
 enum class MatchProblemCode {
     INVALID_REQUEST,
@@ -15,6 +16,7 @@ enum class MatchProblemCode {
     END_BEFORE_LAST_EVENT,
     EVENT_BEFORE_START,
     EVENT_OUT_OF_ORDER,
+    EVENT_SEQUENCE_VIOLATION,
 }
 
 data class MatchProblem(
@@ -22,4 +24,6 @@ data class MatchProblem(
     val title: String,
     val detail: String,
     val currentStatus: MatchStatus? = null,
+    val currentState: String? = null,
+    val attemptedEventType: EventType? = null,
 )

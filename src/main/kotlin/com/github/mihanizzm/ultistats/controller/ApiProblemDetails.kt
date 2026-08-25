@@ -11,4 +11,6 @@ fun MatchProblem.toProblemDetail(status: HttpStatus, instance: URI): ProblemDeta
         this.instance = instance
         setProperty("code", code.name)
         currentStatus?.let { setProperty("currentStatus", it.name) }
+        currentState?.let { setProperty("currentState", it) }
+        attemptedEventType?.let { setProperty("attemptedEventType", it.name) }
     }

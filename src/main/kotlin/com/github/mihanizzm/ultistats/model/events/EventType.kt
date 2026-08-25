@@ -76,4 +76,12 @@ enum class EventType(
 
     /** Окончание halftime. Следующий поинт ожидает [PULL]. */
     HALFTIME_END("Конец халф-тайма", EventCategory.SYSTEM),
+    ;
+
+    fun canReplace(previous: EventType): Boolean =
+        this == previous || (this in BLOCK_TYPES && previous in BLOCK_TYPES)
+
+    companion object {
+        private val BLOCK_TYPES = setOf(BLOCK, BLOCK_MARKER, BLOCK_FIELD)
+    }
 }
