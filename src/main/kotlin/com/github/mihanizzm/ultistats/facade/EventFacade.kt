@@ -73,13 +73,13 @@ class EventFacade(
         request: UpdateEventRequest,
         matchId: UUID,
     ): Event {
-        if (request.type != stored.event.type) throw InvalidEventUpdateException()
+        if (!request.type.canReplace(stored.event.type)) throw InvalidEventUpdateException()
         val merged: CreateEventRequest = when {
             stored.event is OnePlayerEvent && request is OnePlayerEventPatchRequest ->
                 OnePlayerEventRequest(stored.event.type, stored.event.occurredAt, request.participantId)
             stored.event is TwoPlayerEvent && request is TwoPlayerEventPatchRequest ->
                 TwoPlayerEventRequest(
-                    stored.event.type,
+                    request.type,
                     stored.event.occurredAt,
                     request.fromParticipantId ?: stored.event.fromParticipant,
                     request.toParticipantId ?: stored.event.toParticipant,

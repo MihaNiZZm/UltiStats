@@ -78,12 +78,12 @@ class TotalTimeStatisticsAggregator : StatisticsAggregator {
                     isStopped = false
                 }
                 EventType.BRICK -> { }
-                EventType.TURNOVER -> {
+                EventType.PICKUP -> {
                     val ope = event as OnePlayerEvent
                     currentTeamPossessing = teamByParticipantId.getValue(ope.participant)
                     currentParticipantPossessing = ope.participant
                 }
-                EventType.BLOCK_MARKER, EventType.BLOCK_FIELD, EventType.DROP -> {
+                EventType.BLOCK, EventType.BLOCK_MARKER, EventType.BLOCK_FIELD, EventType.INCOMPLETE_PASS -> {
                     currentTeamPossessing = null
                     currentParticipantPossessing = null
                 }

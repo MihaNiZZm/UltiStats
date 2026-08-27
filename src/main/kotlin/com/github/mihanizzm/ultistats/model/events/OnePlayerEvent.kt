@@ -5,7 +5,7 @@ import java.util.UUID
 
 /**
  * Событие с одним участником матча.
- * Используется для: PULL, BRICK, DROP, TURNOVER.
+ * Используется для: PULL, BRICK, INCOMPLETE_PASS, PICKUP.
  */
 data class OnePlayerEvent(
     val participant: UUID,

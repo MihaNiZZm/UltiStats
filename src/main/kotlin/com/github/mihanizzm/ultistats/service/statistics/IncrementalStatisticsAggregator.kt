@@ -37,10 +37,11 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
         return when (event.type) {
             EventType.PASS -> applyPass(stats, event as TwoPlayerEvent, teamByParticipantId)
             EventType.GOAL -> applyGoal(stats, event as TwoPlayerEvent, teamByParticipantId)
-            EventType.DROP -> applyDrop(stats, event as OnePlayerEvent, teamByParticipantId)
+            EventType.INCOMPLETE_PASS -> applyIncompletePass(stats, event as OnePlayerEvent, teamByParticipantId)
             EventType.PULL -> applyPull(stats, event as OnePlayerEvent, teamByParticipantId)
             EventType.BRICK -> applyBrick(stats, event as OnePlayerEvent, teamByParticipantId)
-            EventType.TURNOVER -> applyTurnover(stats, event as OnePlayerEvent, teamByParticipantId)
+            EventType.PICKUP -> applyPickup(stats, event as OnePlayerEvent, teamByParticipantId)
+            EventType.BLOCK -> applyBlock(stats, event as TwoPlayerEvent, teamByParticipantId)
             EventType.BLOCK_MARKER -> applyBlockMarker(stats, event as TwoPlayerEvent, teamByParticipantId)
             EventType.BLOCK_FIELD -> applyBlockField(stats, event as TwoPlayerEvent, teamByParticipantId)
             EventType.INTERCEPTION -> applyInterception(stats, event as TwoPlayerEvent, teamByParticipantId)
@@ -127,7 +128,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
         )
     }
 
-    private fun applyDrop(
+    private fun applyIncompletePass(
         stats: MatchStatistics,
         event: OnePlayerEvent,
         teamByParticipantId: Map<UUID, UUID>,
@@ -135,7 +136,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
         val newPlayerStats = stats.playerStatistics.map { stat ->
             when (stat.participantId) {
                 event.participant -> stat.copy(
-                    attack = stat.attack.copy(drops = stat.attack.drops + 1)
+                    attack = stat.attack.copy(incompletePasses = stat.attack.incompletePasses + 1)
                 )
                 else -> stat
             }
@@ -214,7 +215,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
         )
     }
 
-    private fun applyTurnover(
+    private fun applyPickup(
         stats: MatchStatistics,
         event: OnePlayerEvent,
         teamByParticipantId: Map<UUID, UUID>,
@@ -232,6 +233,37 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
             when (stat.teamId) {
                 teamByParticipantId.getValue(event.participant) -> stat.copy(
                     attack = stat.attack.copy(possessions = stat.attack.possessions + 1)
+                )
+                else -> stat
+            }
+        }
+
+        return stats.copy(
+            playerStatistics = newPlayerStats,
+            teamStatistics = newTeamStats,
+        )
+    }
+
+    private fun applyBlock(
+        stats: MatchStatistics,
+        event: TwoPlayerEvent,
+        teamByParticipantId: Map<UUID, UUID>,
+    ): MatchStatistics {
+        val newPlayerStats = stats.playerStatistics.map { stat ->
+            if (stat.participantId == event.toParticipant) {
+                stat.copy(defense = stat.defense.copy(blocks = stat.defense.blocks + 1))
+            } else {
+                stat
+            }
+        }
+
+        val newTeamStats = stats.teamStatistics.map { stat ->
+            when (stat.teamId) {
+                teamByParticipantId.getValue(event.fromParticipant) -> stat.copy(
+                    attack = stat.attack.copy(allPasses = stat.attack.allPasses + 1),
+                )
+                teamByParticipantId.getValue(event.toParticipant) -> stat.copy(
+                    defense = stat.defense.copy(blocks = stat.defense.blocks + 1),
                 )
                 else -> stat
             }

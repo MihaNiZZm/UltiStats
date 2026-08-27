@@ -10,12 +10,13 @@ import java.util.UUID
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes(
-    JsonSubTypes.Type(OnePlayerEventRequest::class, name = "DROP"),
+    JsonSubTypes.Type(OnePlayerEventRequest::class, name = "INCOMPLETE_PASS"),
     JsonSubTypes.Type(OnePlayerEventRequest::class, name = "PULL"),
     JsonSubTypes.Type(OnePlayerEventRequest::class, name = "BRICK"),
-    JsonSubTypes.Type(OnePlayerEventRequest::class, name = "TURNOVER"),
+    JsonSubTypes.Type(OnePlayerEventRequest::class, name = "PICKUP"),
     JsonSubTypes.Type(TwoPlayerEventRequest::class, name = "PASS"),
     JsonSubTypes.Type(TwoPlayerEventRequest::class, name = "GOAL"),
+    JsonSubTypes.Type(TwoPlayerEventRequest::class, name = "BLOCK"),
     JsonSubTypes.Type(TwoPlayerEventRequest::class, name = "BLOCK_MARKER"),
     JsonSubTypes.Type(TwoPlayerEventRequest::class, name = "BLOCK_FIELD"),
     JsonSubTypes.Type(TwoPlayerEventRequest::class, name = "INTERCEPTION"),
@@ -29,12 +30,13 @@ import java.util.UUID
     oneOf = [OnePlayerEventRequest::class, TwoPlayerEventRequest::class, TeamEventRequest::class, SystemEventRequest::class],
     discriminatorProperty = "type",
     discriminatorMapping = [
-        DiscriminatorMapping(value = "DROP", schema = OnePlayerEventRequest::class),
+        DiscriminatorMapping(value = "INCOMPLETE_PASS", schema = OnePlayerEventRequest::class),
         DiscriminatorMapping(value = "PULL", schema = OnePlayerEventRequest::class),
         DiscriminatorMapping(value = "BRICK", schema = OnePlayerEventRequest::class),
-        DiscriminatorMapping(value = "TURNOVER", schema = OnePlayerEventRequest::class),
+        DiscriminatorMapping(value = "PICKUP", schema = OnePlayerEventRequest::class),
         DiscriminatorMapping(value = "PASS", schema = TwoPlayerEventRequest::class),
         DiscriminatorMapping(value = "GOAL", schema = TwoPlayerEventRequest::class),
+        DiscriminatorMapping(value = "BLOCK", schema = TwoPlayerEventRequest::class),
         DiscriminatorMapping(value = "BLOCK_MARKER", schema = TwoPlayerEventRequest::class),
         DiscriminatorMapping(value = "BLOCK_FIELD", schema = TwoPlayerEventRequest::class),
         DiscriminatorMapping(value = "INTERCEPTION", schema = TwoPlayerEventRequest::class),
@@ -59,14 +61,14 @@ sealed interface CreateEventRequest {
     val occurredAt: Instant
 }
 
-@Schema(description = "Событие с одним участником матча: DROP, PULL, BRICK или TURNOVER.")
+@Schema(description = "Событие с одним участником матча: INCOMPLETE_PASS, PULL, BRICK или PICKUP.")
 data class OnePlayerEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,
     val participantId: UUID,
 ) : CreateEventRequest
 
-@Schema(description = "Событие с двумя участниками матча: PASS, GOAL, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION или CALLAHAN.")
+@Schema(description = "Событие с двумя участниками матча: PASS, GOAL, BLOCK, BLOCK_MARKER, BLOCK_FIELD, INTERCEPTION или CALLAHAN.")
 data class TwoPlayerEventRequest(
     override val type: EventType,
     override val occurredAt: Instant,

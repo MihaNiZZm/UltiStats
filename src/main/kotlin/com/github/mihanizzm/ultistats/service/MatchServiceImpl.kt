@@ -15,6 +15,8 @@ import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchTeamRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamRepository
 import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
+import com.github.mihanizzm.ultistats.validation.event.EventSequenceDecision
+import com.github.mihanizzm.ultistats.validation.event.EventSequencePolicy
 import com.github.mihanizzm.ultistats.validation.match.MatchLifecycleDecision
 import com.github.mihanizzm.ultistats.validation.match.MatchLifecyclePolicy
 import com.github.mihanizzm.ultistats.validation.match.MatchProblem
@@ -34,6 +36,7 @@ class MatchServiceImpl(
     private val eventRepository: SpringDataEventRepository,
     private val teamRepository: SpringDataTeamRepository,
     private val lifecyclePolicy: MatchLifecyclePolicy,
+    private val sequencePolicy: EventSequencePolicy,
 ) : MatchService {
     override fun get(matchId: UUID): Match? =
         matchRepository.findByIdAndDeletedAtIsNull(matchId)?.hydrate(includeEvents = true)
@@ -129,6 +132,18 @@ class MatchServiceImpl(
     override fun endMatch(matchId: UUID, timestamp: Instant): MatchCommandResult<Match> {
         val match = getForUpdate(matchId)?.hydrate(includeEvents = true) ?: return MatchCommandResult.NotFound
         lifecyclePolicy.validateFinish(match, timestamp).toCommandRejection()?.let { return it }
+        when (val sequence = sequencePolicy.validate(match.events, requirePointEnded = true)) {
+            is EventSequenceDecision.Allowed -> Unit
+            is EventSequenceDecision.Rejected -> return MatchCommandResult.Conflict(
+                MatchProblem(
+                    code = MatchProblemCode.MATCH_NOT_AT_POINT_END,
+                    title = "Match point is not completed",
+                    detail = "A match can be finished only after a completed point; current state is ${sequence.violation.currentState}",
+                    currentStatus = match.status,
+                    currentState = sequence.violation.currentState,
+                ),
+            )
+        }
 
         matchRepository.save(match.copy(endedAt = timestamp))
         return MatchCommandResult.Success(readHydratedForUpdate(matchId))

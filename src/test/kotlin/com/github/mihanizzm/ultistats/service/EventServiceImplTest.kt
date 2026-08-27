@@ -31,6 +31,29 @@ class EventServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
+    fun `Пас не может быть первым игровым событием`() {
+        val pass = TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, EVENT_AT, EventType.PASS)
+
+        val result = assertIs<EventCommandResult.Conflict>(eventService.create(pass, MATCH.id))
+
+        assertEquals("EVENT_SEQUENCE_VIOLATION", result.problem.code.name)
+        assertEquals(emptyList(), matchService.getOrThrow(MATCH.id).events)
+    }
+
+    @Test
+    fun `Пулл подбор и гол образуют допустимый поинт`() {
+        val events = listOf(
+            OnePlayerEvent(PLAYERS_2[0].id, EVENT_AT, EventType.PULL),
+            OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT.plusSeconds(1), EventType.PICKUP),
+            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, EVENT_AT.plusSeconds(2), EventType.GOAL),
+        )
+
+        events.forEach { assertIs<EventCommandResult.Success>(eventService.create(it, MATCH.id)) }
+
+        assertEquals(events, matchService.getOrThrow(MATCH.id).events)
+    }
+
+    @Test
     fun `Событие изменяется`() {
         val event = OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT, EventType.PULL)
         val newEvent = OnePlayerEvent(PLAYERS_1[1].id, event.occurredAt, EventType.PULL)
@@ -62,6 +85,58 @@ class EventServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
+    fun `Удаление обязательного подбора отклоняется без изменения журнала`() {
+        val pull = assertIs<EventCommandResult.Success>(
+            eventService.create(OnePlayerEvent(PLAYERS_2[0].id, EVENT_AT, EventType.PULL), MATCH.id),
+        ).event
+        val pickup = assertIs<EventCommandResult.Success>(
+            eventService.create(
+                OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT.plusSeconds(1), EventType.PICKUP),
+                MATCH.id,
+            ),
+        ).event
+        val pass = assertIs<EventCommandResult.Success>(
+            eventService.create(
+                TwoPlayerEvent(
+                    PLAYERS_1[0].id,
+                    PLAYERS_1[1].id,
+                    EVENT_AT.plusSeconds(2),
+                    EventType.PASS,
+                ),
+                MATCH.id,
+            ),
+        ).event
+
+        val result = assertIs<EventCommandResult.Conflict>(eventService.remove(pickup.id, MATCH.id))
+
+        assertEquals("EVENT_SEQUENCE_VIOLATION", result.problem.code.name)
+        assertEquals(listOf(pull.id, pickup.id, pass.id), eventService.getAllEventsOfMatch(MATCH.id).map { it.id })
+    }
+
+    @Test
+    fun `Удаление финального гола завершенного матча отклоняется`() {
+        eventService.create(OnePlayerEvent(PLAYERS_2[0].id, EVENT_AT, EventType.PULL), MATCH.id)
+        eventService.create(OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT.plusSeconds(1), EventType.PICKUP), MATCH.id)
+        val goal = assertIs<EventCommandResult.Success>(
+            eventService.create(
+                TwoPlayerEvent(
+                    PLAYERS_1[0].id,
+                    PLAYERS_1[1].id,
+                    EVENT_AT.plusSeconds(2),
+                    EventType.GOAL,
+                ),
+                MATCH.id,
+            ),
+        ).event
+        matchService.endMatch(MATCH.id, EVENT_AT.plusSeconds(3))
+
+        val result = assertIs<EventCommandResult.Conflict>(eventService.remove(goal.id, MATCH.id))
+
+        assertEquals("EVENT_SEQUENCE_VIOLATION", result.problem.code.name)
+        assertEquals(EventType.GOAL, eventService.get(goal.id, MATCH.id)?.event?.type)
+    }
+
+    @Test
     fun `Удаление отсутствующего события возвращает NotFound`() {
         assertIs<EventCommandResult.NotFound>(eventService.remove(java.util.UUID.randomUUID(), MATCH.id))
     }
@@ -70,10 +145,11 @@ class EventServiceImplTest : MatchAbstractTest() {
     fun `Выводится список всех событий`() {
         val events = listOf(
             OnePlayerEvent(PLAYERS_2[0].id, EVENT_AT, EventType.PULL),
-            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, EVENT_AT.plusSeconds(1), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, EVENT_AT.plusSeconds(2), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, EVENT_AT.plusSeconds(3), EventType.PASS),
-            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, EVENT_AT.plusSeconds(4), EventType.GOAL),
+            OnePlayerEvent(PLAYERS_1[0].id, EVENT_AT.plusSeconds(1), EventType.PICKUP),
+            TwoPlayerEvent(PLAYERS_1[0].id, PLAYERS_1[1].id, EVENT_AT.plusSeconds(2), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[1].id, PLAYERS_1[2].id, EVENT_AT.plusSeconds(3), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[2].id, PLAYERS_1[3].id, EVENT_AT.plusSeconds(4), EventType.PASS),
+            TwoPlayerEvent(PLAYERS_1[3].id, PLAYERS_1[4].id, EVENT_AT.plusSeconds(5), EventType.GOAL),
         )
 
         events.forEach { assertIs<EventCommandResult.Success>(eventService.create(it, MATCH.id)) }
