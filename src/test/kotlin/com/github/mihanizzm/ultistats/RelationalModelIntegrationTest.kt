@@ -3,6 +3,7 @@ package com.github.mihanizzm.ultistats
 import com.github.mihanizzm.ultistats.dto.request.OnePlayerEventRequest
 import com.github.mihanizzm.ultistats.dto.request.TwoPlayerEventRequest
 import com.github.mihanizzm.ultistats.factory.EventFactory
+import com.github.mihanizzm.ultistats.fixture.MatchEventTestFixture
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.MatchParticipantKind
 import com.github.mihanizzm.ultistats.model.Player
@@ -37,6 +38,8 @@ import kotlin.test.assertNull
 @SpringBootTest
 @Transactional
 class RelationalModelIntegrationTest {
+    private val matchEventFixture by lazy { MatchEventTestFixture(matchService, eventService) }
+
     @Autowired lateinit var teamService: TeamService
     @Autowired lateinit var playerService: PlayerService
     @Autowired lateinit var teamPlayerService: TeamPlayerService
@@ -277,7 +280,7 @@ class RelationalModelIntegrationTest {
     fun `finish before latest persisted event is rejected without persisting an end timestamp`() {
         val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
         assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
-        recordCompletedPoint(eventTimestamp)
+        matchEventFixture.recordCompletedPoint(match.id, eventTimestamp)
 
         val result = matchService.endMatch(match.id, eventTimestamp.minusSeconds(1))
 
@@ -293,7 +296,7 @@ class RelationalModelIntegrationTest {
     fun `finish at latest persisted event timestamp returns finished match`() {
         val eventTimestamp = Instant.parse("2026-08-14T10:00:00Z")
         assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(match.id, eventTimestamp.minusSeconds(60)))
-        recordCompletedPoint(eventTimestamp)
+        matchEventFixture.recordCompletedPoint(match.id, eventTimestamp)
 
         val result = matchService.endMatch(match.id, eventTimestamp)
 
@@ -301,12 +304,6 @@ class RelationalModelIntegrationTest {
         assertEquals(eventTimestamp, success.value.endedAt)
         assertEquals(com.github.mihanizzm.ultistats.model.MatchStatus.FINISHED, success.value.status)
         assertEquals(success.value, matchService.getOrThrow(match.id))
-    }
-
-    private fun recordCompletedPoint(goalAt: Instant, type: EventType = EventType.GOAL) {
-        eventService.create(OnePlayerEvent(firstPlayer.id, goalAt.minusSeconds(2), EventType.PULL), match.id)
-        eventService.create(OnePlayerEvent(secondPlayer.id, goalAt.minusSeconds(1), EventType.PICKUP), match.id)
-        eventService.create(TwoPlayerEvent(firstPlayer.id, secondPlayer.id, goalAt, type), match.id)
     }
 
     @Test

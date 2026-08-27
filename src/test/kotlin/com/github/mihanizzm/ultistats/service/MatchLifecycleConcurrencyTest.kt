@@ -1,5 +1,6 @@
 package com.github.mihanizzm.ultistats.service
 
+import com.github.mihanizzm.ultistats.fixture.MatchEventTestFixture
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.EventType
@@ -25,6 +26,8 @@ import kotlin.test.assertTrue
 @SpringBootTest
 @Suppress("NonAsciiCharacters")
 class MatchLifecycleConcurrencyTest {
+    private val matchEventFixture by lazy { MatchEventTestFixture(matchService, eventService) }
+
     @Autowired
     lateinit var teamService: TeamService
 
@@ -74,7 +77,7 @@ class MatchLifecycleConcurrencyTest {
     fun `одновременное завершение матча и создание события сериализуются`() {
         val matchId = createPlannedMatch()
         assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(matchId, MATCH_STARTED_AT))
-        recordCompletedPoint(matchId)
+        matchEventFixture.recordCompletedPoint(matchId, POINT_ENDED_AT)
         val executor = Executors.newFixedThreadPool(2)
         val gate = CountDownLatch(1)
 
@@ -124,7 +127,7 @@ class MatchLifecycleConcurrencyTest {
     }
 
     @Test
-    fun `два одновременных гола валидируются относительно сохраненного хвоста`() {
+    fun `из двух одновременно отправленных голов сохраняется только один`() {
         val matchId = createPlannedMatch()
         assertIs<MatchCommandResult.Success<Match>>(matchService.startMatch(matchId, MATCH_STARTED_AT))
         val participants = matchService.getOrThrow(matchId).participantsByTeam.values.flatten()
@@ -172,21 +175,6 @@ class MatchLifecycleConcurrencyTest {
         teamService.create(secondTeam)
         matchService.create(match)
         return match.id
-    }
-
-    private fun recordCompletedPoint(matchId: UUID) {
-        val participants = matchService.getOrThrow(matchId).participantsByTeam.values.flatten()
-        val first = participants[0].participantId
-        val second = participants[1].participantId
-        assertIs<EventCommandResult.Success>(
-            eventService.create(OnePlayerEvent(first, POINT_ENDED_AT.minusSeconds(2), EventType.PULL), matchId),
-        )
-        assertIs<EventCommandResult.Success>(
-            eventService.create(OnePlayerEvent(second, POINT_ENDED_AT.minusSeconds(1), EventType.PICKUP), matchId),
-        )
-        assertIs<EventCommandResult.Success>(
-            eventService.create(TwoPlayerEvent(first, second, POINT_ENDED_AT, EventType.GOAL), matchId),
-        )
     }
 
     private companion object {

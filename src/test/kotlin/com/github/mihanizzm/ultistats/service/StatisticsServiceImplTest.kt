@@ -75,7 +75,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
-    fun `Статистика перебития в поле записана`() {
+    fun `Уточненный полевой блок не дублируется как общий блок`() {
         MATCH.events.add(
             TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK_FIELD),
         )
@@ -85,7 +85,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.participantId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnField = 1))
-                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsFieldPlayer = 1))
+                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocksAsFieldPlayer = 1))
                         else -> it
                     }
                 },
@@ -94,7 +94,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.teamId) {
                         UUIDS[0] -> it.copy(attack = it.attack.copy(allPasses = 1))
-                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsFieldPlayer = 1))
+                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocksAsFieldPlayer = 1))
                         else -> it
                     }
                 },
@@ -143,7 +143,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
-    fun `Статистика перебития на маркере записана`() {
+    fun `Уточненный блок маркера не дублируется как общий блок`() {
         MATCH.events.add(
             TwoPlayerEvent(UUIDS[2], UUIDS[7], Instant.now(), EventType.BLOCK_MARKER),
         )
@@ -153,7 +153,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.participantId) {
                         UUIDS[2] -> it.copy(attack = it.attack.copy(dropsOnMarker = 1))
-                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsMarker = 1))
+                        UUIDS[7] -> it.copy(defense = it.defense.copy(blocksAsMarker = 1))
                         else -> it
                     }
                 },
@@ -162,7 +162,7 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
                 .map {
                     when (it.teamId) {
                         UUIDS[0] -> it.copy(attack = it.attack.copy(allPasses = 1))
-                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocks = 1, blocksAsMarker = 1))
+                        UUIDS[1] -> it.copy(defense = it.defense.copy(blocksAsMarker = 1))
                         else -> it
                     }
                 },

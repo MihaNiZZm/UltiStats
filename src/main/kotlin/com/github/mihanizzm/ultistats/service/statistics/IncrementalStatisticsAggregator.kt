@@ -286,10 +286,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
                     attack = stat.attack.copy(dropsOnMarker = stat.attack.dropsOnMarker + 1)
                 )
                 event.toParticipant -> stat.copy(
-                    defense = stat.defense.copy(
-                        blocks = stat.defense.blocks + 1,
-                        blocksAsMarker = stat.defense.blocksAsMarker + 1,
-                    )
+                    defense = stat.defense.copy(blocksAsMarker = stat.defense.blocksAsMarker + 1)
                 )
                 else -> stat
             }
@@ -301,10 +298,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
                     attack = stat.attack.copy(allPasses = stat.attack.allPasses + 1)
                 )
                 teamByParticipantId.getValue(event.toParticipant) -> stat.copy(
-                    defense = stat.defense.copy(
-                        blocks = stat.defense.blocks + 1,
-                        blocksAsMarker = stat.defense.blocksAsMarker + 1,
-                    )
+                    defense = stat.defense.copy(blocksAsMarker = stat.defense.blocksAsMarker + 1)
                 )
                 else -> stat
             }
@@ -327,10 +321,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
                     attack = stat.attack.copy(dropsOnField = stat.attack.dropsOnField + 1)
                 )
                 event.toParticipant -> stat.copy(
-                    defense = stat.defense.copy(
-                        blocks = stat.defense.blocks + 1,
-                        blocksAsFieldPlayer = stat.defense.blocksAsFieldPlayer + 1,
-                    )
+                    defense = stat.defense.copy(blocksAsFieldPlayer = stat.defense.blocksAsFieldPlayer + 1)
                 )
                 else -> stat
             }
@@ -342,10 +333,7 @@ class IncrementalStatisticsAggregator : StatisticsAggregator {
                     attack = stat.attack.copy(allPasses = stat.attack.allPasses + 1)
                 )
                 teamByParticipantId.getValue(event.toParticipant) -> stat.copy(
-                    defense = stat.defense.copy(
-                        blocks = stat.defense.blocks + 1,
-                        blocksAsFieldPlayer = stat.defense.blocksAsFieldPlayer + 1,
-                    )
+                    defense = stat.defense.copy(blocksAsFieldPlayer = stat.defense.blocksAsFieldPlayer + 1)
                 )
                 else -> stat
             }
