@@ -84,6 +84,29 @@ class StatisticsControllerTest {
     }
 
     @Test
+    fun `Незаполняемые и дублирующиеся поля не публикуются в статистике`() {
+        val response = mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val statistics = objectMapper.readTree(response.response.contentAsString)
+        val removedFields = listOf(
+            "saves",
+            "saveGoals",
+            "breaks",
+            "possessionTime",
+            "percentOfPossession",
+            "timeSpentOnViolationDiscussions",
+        )
+
+        removedFields.forEach { field ->
+            assertThat(statistics.findValues(field))
+                .describedAs("Поле %s не должно входить в Statistics API", field)
+                .isEmpty()
+        }
+    }
+
+    @Test
     fun `Статистика использует контракт участников матча и включает неизвестных`() {
         val participants = matchService.getOrThrow(match.id).participantsByTeam.values.flatten()
         val unknownParticipantIds = participants
