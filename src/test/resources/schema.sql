@@ -45,6 +45,7 @@ CREATE TABLE matches (
 CREATE TABLE match_teams (
     match_id UUID NOT NULL REFERENCES matches(id),
     team_id UUID NOT NULL REFERENCES teams(id),
+    team_name VARCHAR(255) NOT NULL,
     position INTEGER NOT NULL,
     score INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (match_id, team_id),
@@ -61,6 +62,8 @@ CREATE TABLE match_participants (
     team_id UUID NOT NULL,
     kind VARCHAR(16) NOT NULL,
     unknown_slot INTEGER,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
     number INTEGER,
     PRIMARY KEY (match_id, participant_id),
     FOREIGN KEY (match_id, team_id) REFERENCES match_teams(match_id, team_id),
@@ -71,6 +74,11 @@ CREATE TABLE match_participants (
         (kind = 'PLAYER' AND unknown_slot IS NULL)
         OR
         (kind = 'UNKNOWN' AND unknown_slot IN (1, 2) AND number IS NULL)
+    ),
+    CHECK (
+        (kind = 'PLAYER' AND first_name IS NOT NULL AND last_name IS NOT NULL)
+        OR
+        (kind = 'UNKNOWN' AND first_name IS NULL AND last_name IS NULL)
     )
 );
 

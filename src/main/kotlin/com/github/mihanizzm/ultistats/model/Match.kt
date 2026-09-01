@@ -36,6 +36,9 @@ data class Match(
     @Transient
     val participantsByTeam: Map<UUID, List<MatchParticipant>> = emptyMap(),
 
+    @Transient
+    val teamNamesById: Map<UUID, String> = emptyMap(),
+
     @Column(name = "planned_start_timestamp")
     val plannedStartTimestamp: Instant? = null,
 

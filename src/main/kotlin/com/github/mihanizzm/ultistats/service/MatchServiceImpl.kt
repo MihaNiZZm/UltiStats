@@ -13,6 +13,7 @@ import com.github.mihanizzm.ultistats.repository.jpa.SpringDataEventRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchParticipantRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataMatchTeamRepository
+import com.github.mihanizzm.ultistats.repository.jpa.SpringDataPlayerRepository
 import com.github.mihanizzm.ultistats.repository.jpa.SpringDataTeamRepository
 import com.github.mihanizzm.ultistats.service.result.MatchCommandResult
 import com.github.mihanizzm.ultistats.validation.event.EventSequenceDecision
@@ -33,6 +34,7 @@ class MatchServiceImpl(
     private val matchTeamRepository: SpringDataMatchTeamRepository,
     private val matchParticipantRepository: SpringDataMatchParticipantRepository,
     private val teamPlayerRepository: SpringDataTeamPlayerRepository,
+    private val playerRepository: SpringDataPlayerRepository,
     private val eventRepository: SpringDataEventRepository,
     private val teamRepository: SpringDataTeamRepository,
     private val lifecyclePolicy: MatchLifecyclePolicy,
@@ -166,6 +168,7 @@ class MatchServiceImpl(
         }
         return copy(
             teamIds = matchTeams.map { it.teamId },
+            teamNamesById = matchTeams.associate { it.teamId to it.teamName },
             teamScores = matchTeams.map { TeamScore(it.teamId, it.score) }.toMutableList(),
             participantsByTeam = matchParticipants
                 .sortedWith(
@@ -189,12 +192,31 @@ class MatchServiceImpl(
         matchParticipantRepository.flush()
         matchTeamRepository.deleteAllByMatchId(matchId)
         matchTeamRepository.flush()
+        val teamsById = teamRepository.findAllByIdInAndDeletedAtIsNull(teamIds).associateBy { it.id }
         matchTeamRepository.saveAll(teamIds.mapIndexed { index, teamId ->
-            MatchTeam(matchId, teamId, index + 1)
+            MatchTeam(
+                matchId = matchId,
+                teamId = teamId,
+                teamName = teamsById.getValue(teamId).name,
+                position = index + 1,
+            )
         })
+        val membershipsByTeam = teamIds.associateWith(teamPlayerRepository::findAllByTeamIdAndDeletedAtIsNull)
+        val playersById = playerRepository.findAllByIdInAndDeletedAtIsNull(
+            membershipsByTeam.values.flatten().map { it.playerId }.distinct(),
+        ).associateBy { it.id }
         val participants = teamIds.flatMap { teamId ->
-            val players = teamPlayerRepository.findAllByTeamIdAndDeletedAtIsNull(teamId).map { membership ->
-                MatchParticipant.player(matchId, teamId, membership.playerId, membership.number)
+            val players = membershipsByTeam.getValue(teamId).mapNotNull { membership ->
+                playersById[membership.playerId]?.let { player ->
+                    MatchParticipant.player(
+                        matchId = matchId,
+                        teamId = teamId,
+                        playerId = player.id,
+                        firstName = player.firstName,
+                        lastName = player.lastName,
+                        number = membership.number,
+                    )
+                }
             }
             players + (1..2).map { slot -> MatchParticipant.unknown(matchId, teamId, slot) }
         }

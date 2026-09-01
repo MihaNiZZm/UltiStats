@@ -42,15 +42,37 @@ data class MatchParticipant(
     @Column(name = "unknown_slot")
     val unknownSlot: Int? = null,
 
+    @Column(name = "first_name", length = 255)
+    val firstName: String? = null,
+
+    @Column(name = "last_name", length = 255)
+    val lastName: String? = null,
+
     @Column
     val number: Int? = null,
 ) {
+    @get:jakarta.persistence.Transient
+    val displayName: String
+        get() = when (kind) {
+            MatchParticipantKind.PLAYER -> "${requireNotNull(firstName)} ${requireNotNull(lastName)}"
+            MatchParticipantKind.UNKNOWN -> "Неизвестный игрок ${requireNotNull(unknownSlot)}"
+        }
+
     companion object {
-        fun player(matchId: UUID, teamId: UUID, playerId: UUID, number: Int?) = MatchParticipant(
+        fun player(
+            matchId: UUID,
+            teamId: UUID,
+            playerId: UUID,
+            firstName: String,
+            lastName: String,
+            number: Int?,
+        ) = MatchParticipant(
             matchId = matchId,
             participantId = playerId,
             teamId = teamId,
             kind = MatchParticipantKind.PLAYER,
+            firstName = firstName,
+            lastName = lastName,
             number = number,
         )
 

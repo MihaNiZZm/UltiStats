@@ -76,15 +76,96 @@ class MatchControllerTest {
             .andExpect(jsonPath("$.teams[0].participants.length()").value(4))
             .andExpect(jsonPath("$.teams[0].participants[0].kind").value("PLAYER"))
             .andExpect(jsonPath("$.teams[0].participants[0].participantId").exists())
+            .andExpect(jsonPath("$.teams[0].participants[0].firstName").value("Игрок"))
+            .andExpect(jsonPath("$.teams[0].participants[0].lastName").value("Один"))
+            .andExpect(jsonPath("$.teams[0].participants[0].displayName").value("Игрок Один"))
             .andExpect(jsonPath("$.teams[0].participants[0].playerId").doesNotExist())
             .andExpect(jsonPath("$.teams[0].participants[2].kind").value("UNKNOWN"))
             .andExpect(jsonPath("$.teams[0].participants[2].unknownSlot").value(1))
+            .andExpect(jsonPath("$.teams[0].participants[2].firstName").doesNotExist())
+            .andExpect(jsonPath("$.teams[0].participants[2].lastName").doesNotExist())
+            .andExpect(jsonPath("$.teams[0].participants[2].displayName").value("Неизвестный игрок 1"))
             .andExpect(jsonPath("$.teams[0].participants[2].playerId").doesNotExist())
             .andExpect(jsonPath("$.teams[0].participants[3].kind").value("UNKNOWN"))
             .andExpect(jsonPath("$.teams[0].participants[3].unknownSlot").value(2))
             .andExpect(jsonPath("$.teams[1].participants.length()").value(4))
             .andExpect(jsonPath("$.eventCount").value(0))
             .andExpect(jsonPath("$.diskHolderId").doesNotExist())
+    }
+
+    @Test
+    fun `Имена матча не меняются после редактирования справочников`() {
+        val team1 = createTestTeam("Original team 1")
+        val team2 = createTestTeam("Original team 2")
+        val firstMembership = teamPlayerService.getByTeamId(team1.id).first { it.number == 1 }
+        val player = requireNotNull(playerService.get(firstMembership.playerId))
+        val request = CreateMatchRequest(teamIds = listOf(team1.id, team2.id))
+        val created = mockMvc.perform(
+            post("/api/v1/matches")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        ).andExpect(status().isCreated).andReturn()
+        val createdJson = objectMapper.readTree(created.response.contentAsString)
+        val matchId = createdJson.get("id").asText()
+        val originalNumber = createdJson.at("/teams/0/participants/0/number").asInt()
+
+        teamService.update(team1.copy(name = "Renamed team"))
+        playerService.update(player.copy(firstName = "Renamed", lastName = "Player"))
+        teamPlayerService.add(team1.id, player.id, originalNumber + 10)
+        playerService.delete(player.id)
+
+        mockMvc.perform(
+            put("/api/v1/matches/$matchId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(UpdateMatchRequest(teamIds = listOf(team1.id, team2.id)))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.teams[0].teamName").value("Original team 1"))
+            .andExpect(jsonPath("$.teams[0].participants[0].displayName")
+                .value("${player.firstName} ${player.lastName}"))
+            .andExpect(jsonPath("$.teams[0].participants[0].number").value(originalNumber))
+
+        mockMvc.perform(get("/api/v1/matches/$matchId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.teams[0].teamName").value("Original team 1"))
+            .andExpect(jsonPath("$.teams[0].participants[0].firstName").value(player.firstName))
+            .andExpect(jsonPath("$.teams[0].participants[0].lastName").value(player.lastName))
+            .andExpect(jsonPath("$.teams[0].participants[0].displayName")
+                .value("${player.firstName} ${player.lastName}"))
+            .andExpect(jsonPath("$.teams[0].participants[0].number").value(originalNumber))
+    }
+
+    @Test
+    fun `Замена команды в запланированном матче создает новый снимок`() {
+        val team1 = createTestTeam("Команда 1")
+        val removedTeam = createTestTeam("Удаленная команда")
+        val replacementTeam = createTestTeam("Команда замены")
+        teamPlayerService.getByTeamId(replacementTeam.id).forEach { membership ->
+            val player = requireNotNull(playerService.get(membership.playerId))
+            playerService.update(
+                player.copy(firstName = "Замена", lastName = "Игрок ${membership.number}"),
+            )
+        }
+        val match = createTestMatch(team1, removedTeam)
+        val updateRequest = UpdateMatchRequest(teamIds = listOf(team1.id, replacementTeam.id))
+
+        mockMvc.perform(
+            put("/api/v1/matches/${match.id}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.teams[1].teamId").value(replacementTeam.id.toString()))
+            .andExpect(jsonPath("$.teams[1].teamName").value("Команда замены"))
+            .andExpect(jsonPath("$.teams[1].participants[0].displayName").value("Замена Игрок 1"))
+            .andExpect(jsonPath("$.teams[1].participants[1].displayName").value("Замена Игрок 2"))
+
+        mockMvc.perform(get("/api/v1/matches/${match.id}"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.teams[1].teamId").value(replacementTeam.id.toString()))
+            .andExpect(jsonPath("$.teams[1].teamName").value("Команда замены"))
+            .andExpect(jsonPath("$.teams[1].participants[0].displayName").value("Замена Игрок 1"))
+            .andExpect(jsonPath("$.teams[1].participants[1].displayName").value("Замена Игрок 2"))
     }
 
     @Test

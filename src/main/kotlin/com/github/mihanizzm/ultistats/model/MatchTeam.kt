@@ -25,6 +25,9 @@ data class MatchTeam(
     @Column(name = "team_id")
     val teamId: UUID,
 
+    @Column(name = "team_name", nullable = false, length = 255)
+    val teamName: String,
+
     @Column(nullable = false)
     val position: Int,
 
