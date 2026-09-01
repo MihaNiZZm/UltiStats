@@ -187,7 +187,7 @@ class RelationalModelIntegrationTest {
             match.id,
         )
         eventService.create(assertNotNull(event), match.id)
-        val statistics = statisticsService.recalculateMatchStatistics(match.id)
+        val statistics = statisticsService.recalculateMatchStatistics(matchService.getOrThrow(match.id))
 
         assertEquals(
             1,

@@ -23,7 +23,7 @@ data class MatchResponse(
                     val teamScore = match.teamScores.find { it.teamId == teamId }?.score ?: 0
                     MatchTeamResponse(
                         teamId = team.id,
-                        teamName = team.name,
+                        teamName = match.teamNamesById.getValue(teamId),
                         teamScore = teamScore,
                         participants = match.participantsByTeam[teamId].orEmpty().map(MatchParticipantResponse::from),
                         city = team.city,
