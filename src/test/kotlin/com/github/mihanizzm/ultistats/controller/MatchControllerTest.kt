@@ -13,6 +13,7 @@ import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
 import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -79,12 +80,14 @@ class MatchControllerTest {
             .andExpect(jsonPath("$.teams[0].participants[0].firstName").value("Игрок"))
             .andExpect(jsonPath("$.teams[0].participants[0].lastName").value("Один"))
             .andExpect(jsonPath("$.teams[0].participants[0].displayName").value("Игрок Один"))
+            .andExpect(jsonPath("$.teams[0].participants[0].unknownSlot").value(nullValue()))
             .andExpect(jsonPath("$.teams[0].participants[0].playerId").doesNotExist())
             .andExpect(jsonPath("$.teams[0].participants[2].kind").value("UNKNOWN"))
             .andExpect(jsonPath("$.teams[0].participants[2].unknownSlot").value(1))
-            .andExpect(jsonPath("$.teams[0].participants[2].firstName").doesNotExist())
-            .andExpect(jsonPath("$.teams[0].participants[2].lastName").doesNotExist())
+            .andExpect(jsonPath("$.teams[0].participants[2].firstName").value(nullValue()))
+            .andExpect(jsonPath("$.teams[0].participants[2].lastName").value(nullValue()))
             .andExpect(jsonPath("$.teams[0].participants[2].displayName").value("Неизвестный игрок 1"))
+            .andExpect(jsonPath("$.teams[0].participants[2].number").value(nullValue()))
             .andExpect(jsonPath("$.teams[0].participants[2].playerId").doesNotExist())
             .andExpect(jsonPath("$.teams[0].participants[3].kind").value("UNKNOWN"))
             .andExpect(jsonPath("$.teams[0].participants[3].unknownSlot").value(2))
@@ -243,6 +246,25 @@ class MatchControllerTest {
             .andExpect(jsonPath("$.content.length()").value(2))
             .andExpect(jsonPath("$.totalElements").value(2))
             .andExpect(jsonPath("$.currentPage").value(0))
+    }
+
+    @Test
+    fun `Имя команды в списке матчей не меняется после переименования`() {
+        val team1 = createTestTeam("Original team 1")
+        val team2 = createTestTeam("Original team 2")
+        val created = mockMvc.perform(
+            post("/api/v1/matches")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(CreateMatchRequest(listOf(team1.id, team2.id)))),
+        ).andExpect(status().isCreated).andReturn()
+        val matchId = objectMapper.readTree(created.response.contentAsString).get("id").asText()
+
+        teamService.update(team1.copy(name = "Renamed team"))
+
+        mockMvc.perform(get("/api/v1/matches"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].id").value(matchId))
+            .andExpect(jsonPath("$.content[0].teams[0].teamName").value("Original team 1"))
     }
 
     @Test

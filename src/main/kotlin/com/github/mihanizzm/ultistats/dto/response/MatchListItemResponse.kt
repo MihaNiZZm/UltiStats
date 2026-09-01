@@ -23,7 +23,7 @@ data class MatchListItemResponse(
                         val teamScore = match.teamScores.find { it.teamId == teamId }?.score ?: 0
                         MatchListTeamResponse(
                             teamId = team.id,
-                            teamName = team.name,
+                            teamName = match.teamNamesById.getValue(teamId),
                             teamScore = teamScore,
                             city = team.city,
                             photoUrl = team.photoUrl,
