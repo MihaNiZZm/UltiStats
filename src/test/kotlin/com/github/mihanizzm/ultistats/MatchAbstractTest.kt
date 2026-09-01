@@ -151,6 +151,6 @@ abstract class MatchAbstractTest {
     protected fun recalculateTestMatchStatistics(): MatchStatistics {
         MATCH.events.toList().forEach { eventService.create(it, MATCH.id) }
         MATCH.events.clear()
-        return statisticsService.recalculateMatchStatistics(MATCH.id)
+        return statisticsService.recalculateMatchStatistics(matchService.getOrThrow(MATCH.id))
     }
 }

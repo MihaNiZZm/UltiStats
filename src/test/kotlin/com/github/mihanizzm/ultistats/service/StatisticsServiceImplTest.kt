@@ -26,20 +26,6 @@ class StatisticsServiceImplTest : MatchAbstractTest() {
     }
 
     @Test
-    fun `Создание пустой статистики`() {
-        val teamIds = listOf(TEAM_1.id, TEAM_2.id)
-        val expectedStats = MatchStatistics(
-            playerStatistics = (PLAYERS_1 + PLAYERS_2).map { PlayerStatistics(it.id) },
-            teamStatistics = listOf(TEAM_1, TEAM_2)
-                .map { TeamStatistics(it.id) },
-        )
-
-        val actual = statisticsService.emptyStatistics(teamIds)
-
-        assertThat(actual).isEqualTo(expectedStats)
-    }
-
-    @Test
     fun `Незавершенный пас записывается бросающему`() {
         MATCH.events.add(
             OnePlayerEvent(UUIDS[2], Instant.now(), EventType.INCOMPLETE_PASS),

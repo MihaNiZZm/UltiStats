@@ -19,10 +19,8 @@ class StatisticsController(
     @GetMapping
     @Operation(summary = "Получить статистику матча")
     fun getStatistics(@PathVariable matchId: UUID): ResponseEntity<MatchStatistics> {
-        if (matchService.get(matchId) == null) {
-            return ResponseEntity.notFound().build()
-        }
-        val statistics = statisticsService.recalculateMatchStatistics(matchId)
+        val match = matchService.get(matchId) ?: return ResponseEntity.notFound().build()
+        val statistics = statisticsService.recalculateMatchStatistics(match)
         return ResponseEntity.ok(statistics)
     }
 }

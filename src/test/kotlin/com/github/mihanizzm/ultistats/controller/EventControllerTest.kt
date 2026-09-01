@@ -500,7 +500,7 @@ class EventControllerTest {
             .andReturn().response.contentAsString
         val eventId = objectMapper.readTree(created).get("id").asText()
 
-        val unresolved = statisticsService.recalculateMatchStatistics(match.id)
+        val unresolved = statisticsService.recalculateMatchStatistics(matchService.getOrThrow(match.id))
         assertEquals(1, unresolved.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes)
         assertEquals(1, unresolved.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches)
 
@@ -514,7 +514,7 @@ class EventControllerTest {
             .andExpect(jsonPath("$.fromParticipantId").value(player1.id.toString()))
             .andExpect(jsonPath("$.toParticipantId").value(unknowns[1].participantId.toString()))
 
-        val partiallyCorrected = statisticsService.recalculateMatchStatistics(match.id)
+        val partiallyCorrected = statisticsService.recalculateMatchStatistics(matchService.getOrThrow(match.id))
         assertEquals(0, partiallyCorrected.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes)
         assertEquals(1, partiallyCorrected.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches)
         assertEquals(1, partiallyCorrected.playerStatistics.single { it.participantId == player1.id }.attack.passes)
@@ -529,7 +529,7 @@ class EventControllerTest {
             .andExpect(jsonPath("$.fromParticipantId").value(player1.id.toString()))
             .andExpect(jsonPath("$.toParticipantId").value(player2.id.toString()))
 
-        val corrected = statisticsService.recalculateMatchStatistics(match.id)
+        val corrected = statisticsService.recalculateMatchStatistics(matchService.getOrThrow(match.id))
         assertEquals(0, corrected.playerStatistics.single { it.participantId == unknowns[0].participantId }.attack.passes)
         assertEquals(0, corrected.playerStatistics.single { it.participantId == unknowns[1].participantId }.attack.catches)
         assertEquals(1, corrected.playerStatistics.single { it.participantId == player1.id }.attack.passes)
