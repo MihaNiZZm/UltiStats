@@ -7,24 +7,25 @@ import com.github.mihanizzm.ultistats.model.Player
 import com.github.mihanizzm.ultistats.model.Team
 import com.github.mihanizzm.ultistats.model.events.EventType
 import com.github.mihanizzm.ultistats.model.events.OnePlayerEvent
-import com.github.mihanizzm.ultistats.model.events.SystemEvent
 import com.github.mihanizzm.ultistats.model.events.TeamEvent
 import com.github.mihanizzm.ultistats.model.events.TwoPlayerEvent
 import com.github.mihanizzm.ultistats.service.EventService
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.PlayerService
-import com.github.mihanizzm.ultistats.service.TeamService
 import com.github.mihanizzm.ultistats.service.TeamPlayerService
+import com.github.mihanizzm.ultistats.service.TeamService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
-import java.time.Duration
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Instant
 import java.util.UUID
 
@@ -72,15 +73,35 @@ class StatisticsControllerTest {
         players1 = p1
         players2 = p2
         match = createTestMatch(team1, team2)
-        matchService.startMatch(match.id, Instant.parse("2025-01-01T00:00:00Z"))
+        matchService.startMatch(match.id, MATCH_STARTED_AT)
     }
 
     @Test
-    fun `Получение статистики пустого матча возвращает 200`() {
+    fun `Статистика события возвращает сгруппированный контракт со снимками и миллисекундами`() {
+        eventService.create(OnePlayerEvent(players1[0].id, MATCH_STARTED_AT.plusSeconds(1), EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(players1[0].id, MATCH_STARTED_AT.plusSeconds(2), EventType.PICKUP), match.id)
+        eventService.create(TwoPlayerEvent(players1[0].id, players1[1].id, MATCH_STARTED_AT.plusSeconds(3), EventType.PASS), match.id)
+
+        teamService.update(team1.copy(name = "Переименованная команда"))
+        playerService.update(players1[0].copy(firstName = "Новый", lastName = "Игрок"))
+
         mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.playerStatistics").isArray)
-            .andExpect(jsonPath("$.teamStatistics").isArray)
+            .andExpect(jsonPath("$.matchId").value(match.id.toString()))
+            .andExpect(jsonPath("$.teams.length()").value(2))
+            .andExpect(jsonPath("$.teams[0].teamId").value(team1.id.toString()))
+            .andExpect(jsonPath("$.teams[0].teamName").value("Команда 1"))
+            .andExpect(jsonPath("$.teams[1].teamId").value(team2.id.toString()))
+            .andExpect(jsonPath("$.teams[1].teamName").value("Команда 2"))
+            .andExpect(jsonPath("$.teams[0].participants[0].firstName").value("Игрок"))
+            .andExpect(jsonPath("$.teams[0].participants[0].lastName").value("Один"))
+            .andExpect(jsonPath("$.teams[0].participants[0].displayName").value("Игрок Один"))
+            .andExpect(jsonPath("$.teams[0].attack.allPasses").value(1))
+            .andExpect(jsonPath("$.time.totalTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[0].time.possessionTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[0].participants[0].time.possessionTimeMs").isNumber)
+            .andExpect(jsonPath("$.playerStatistics").doesNotExist())
+            .andExpect(jsonPath("$.teamStatistics").doesNotExist())
     }
 
     @Test
@@ -107,9 +128,8 @@ class StatisticsControllerTest {
     }
 
     @Test
-    fun `Статистика использует контракт участников матча и включает неизвестных`() {
-        val participants = matchService.getOrThrow(match.id).participantsByTeam.values.flatten()
-        val unknownParticipantIds = participants
+    fun `Статистика включает четыре неизвестных участника с явными nullable полями`() {
+        val expectedUnknownIds = matchService.getOrThrow(match.id).participantsByTeam.values.flatten()
             .filter { it.kind == MatchParticipantKind.UNKNOWN }
             .map { it.participantId.toString() }
             .toSet()
@@ -117,85 +137,90 @@ class StatisticsControllerTest {
         val response = mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
             .andExpect(status().isOk)
             .andReturn()
-        val playerStatistics = objectMapper.readTree(response.response.contentAsString).get("playerStatistics")
+        val teams = objectMapper.readTree(response.response.contentAsString).get("teams")
+        val participants = teams.flatMap { team -> team.get("participants").toList() }
+        val unknowns = participants.filter { it.get("kind").asText() == MatchParticipantKind.UNKNOWN.name }
 
-        assertThat(playerStatistics).allSatisfy { statistics ->
-            assertThat(statistics.hasNonNull("participantId")).isTrue()
-            assertThat(statistics.has("playerId")).isFalse()
+        assertThat(participants).allSatisfy { participant ->
+            assertThat(participant.hasNonNull("participantId")).isTrue()
+            assertThat(participant.has("playerId")).isFalse()
         }
-        assertThat(playerStatistics.map { it.get("participantId").asText() }).containsExactlyInAnyOrderElementsOf(
-            participants.map { it.participantId.toString() },
-        )
-        assertThat(playerStatistics.map { it.get("participantId").asText() }.toSet())
-            .containsAll(unknownParticipantIds)
-        assertThat(unknownParticipantIds).hasSize(4)
+        assertThat(unknowns.map { it.get("participantId").asText() })
+            .containsExactlyInAnyOrderElementsOf(expectedUnknownIds)
+        assertThat(unknowns).hasSize(4)
+        assertThat(unknowns).allSatisfy { unknown ->
+            assertThat(unknown.has("firstName")).isTrue()
+            assertThat(unknown.get("firstName").isNull).isTrue()
+            assertThat(unknown.has("lastName")).isTrue()
+            assertThat(unknown.get("lastName").isNull).isTrue()
+            assertThat(unknown.has("number")).isTrue()
+            assertThat(unknown.get("number").isNull).isTrue()
+            assertThat(unknown.get("displayName").asText())
+                .isEqualTo("Неизвестный игрок ${unknown.get("unknownSlot").asInt()}")
+        }
     }
 
     @Test
-    fun `Получение статистики несуществующего матча возвращает 404`() {
-        mockMvc.perform(get("/api/v1/matches/${UUID.randomUUID()}/statistics"))
+    fun `Несуществующий матч возвращает структурированный 404`() {
+        val missingId = UUID.randomUUID()
+        val instance = "/api/v1/matches/$missingId/statistics"
+
+        mockMvc.perform(get(instance))
             .andExpect(status().isNotFound)
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
+            .andExpect(jsonPath("$.title").value("Resource not found"))
+            .andExpect(jsonPath("$.detail").value("Match $missingId not found"))
+            .andExpect(jsonPath("$.instance").value(instance))
     }
 
     @Test
-    fun `Статистика учитывает события матча`() {
-        val player1 = players1[0]
-        val player2 = players1[1]
-        val now = Instant.now()
+    fun `Мягко удаленный матч возвращает структурированный 404`() {
+        matchService.delete(match.id)
+        val instance = "/api/v1/matches/${match.id}/statistics"
 
-        // Добавляем валидную последовательность: пулл, подбор и пас
-        eventService.create(
-            OnePlayerEvent(player1.id, now, EventType.PULL),
-            match.id
-        )
-        eventService.create(
-            OnePlayerEvent(player1.id, now.plusSeconds(1), EventType.PICKUP),
-            match.id
-        )
-        eventService.create(
-            TwoPlayerEvent(player1.id, player2.id, now.plusSeconds(2), EventType.PASS),
-            match.id
-        )
+        mockMvc.perform(get(instance))
+            .andExpect(status().isNotFound)
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
+            .andExpect(jsonPath("$.instance").value(instance))
+    }
+
+    @Test
+    fun `Временная статистика публикуется числом миллисекунд`() {
+        eventService.create(OnePlayerEvent(players1[0].id, MATCH_STARTED_AT.plusSeconds(1), EventType.PULL), match.id)
+        eventService.create(OnePlayerEvent(players2[0].id, MATCH_STARTED_AT.plusSeconds(10), EventType.PICKUP), match.id)
+        eventService.create(TeamEvent(team2.id, MATCH_STARTED_AT.plusSeconds(15), EventType.TIMEOUT_START), match.id)
+        eventService.create(TeamEvent(team2.id, MATCH_STARTED_AT.plusSeconds(75), EventType.TIMEOUT_END), match.id)
+        eventService.create(TwoPlayerEvent(players2[0].id, players2[1].id, MATCH_STARTED_AT.plusSeconds(90), EventType.PASS), match.id)
+        eventService.create(TwoPlayerEvent(players2[1].id, players2[2].id, MATCH_STARTED_AT.plusSeconds(100), EventType.GOAL), match.id)
 
         mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.teamStatistics[?(@.teamId=='${team1.id}')].attack.allPasses").value(1))
-            .andExpect(jsonPath("$.teamStatistics[?(@.teamId=='${team1.id}')].attack.completePasses").value(1))
+            .andExpect(jsonPath("$.time.totalTimeMs").isNumber)
+            .andExpect(jsonPath("$.time.betweenPointsTimeMs").isNumber)
+            .andExpect(jsonPath("$.time.timeoutTimeMs").isNumber)
+            .andExpect(jsonPath("$.time.halftimeTimeMs").isNumber)
+            .andExpect(jsonPath("$.time.pureGameTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[1].time.possessionTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[1].time.betweenPointsTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[1].time.timeoutTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[1].participants[0].time.possessionTimeMs").isNumber)
+            .andExpect(jsonPath("$.teams[1].participants[0].time.averagePossessionTimeMs").isNumber)
     }
 
     @Test
-    fun `Duration сериализуется в ISO-8601 строку`() {
-        // Создаём события с таймаутом для проверки timeStatistics
-        val now = Instant.now()
-        eventService.create(OnePlayerEvent(players1[0].id, now, EventType.PULL), match.id)
-        eventService.create(OnePlayerEvent(players2[0].id, now.plusSeconds(10), EventType.PICKUP), match.id)
-        eventService.create(TeamEvent(team2.id, now.plusSeconds(15), EventType.TIMEOUT_START), match.id)
-        eventService.create(TeamEvent(team2.id, now.plusSeconds(75), EventType.TIMEOUT_END), match.id)
-        eventService.create(TwoPlayerEvent(players2[0].id, players2[1].id, now.plusSeconds(90), EventType.PASS), match.id)
-        eventService.create(TwoPlayerEvent(players2[1].id, players2[2].id, now.plusSeconds(100), EventType.GOAL), match.id)
-
-        val result = mockMvc.perform(get("/api/v1/matches/${match.id}/statistics"))
+    fun `OpenAPI документирует стабильный ответ и ProblemDetail`() {
+        mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk)
-            .andReturn()
-
-        val json = result.response.contentAsString
-        val tree = objectMapper.readTree(json)
-
-        // Проверяем, что timeStatistics поля - строки в ISO-8601 формате
-        val timeStats = tree.get("timeStatistics")
-        assertThat(timeStats.get("timeSpentOnTimeouts").isTextual).isTrue()
-        assertThat(timeStats.get("timeSpentOnTimeouts").asText()).isNotEmpty()
-        assertThat(timeStats.get("timeSpentBetweenPoints").isTextual).isTrue()
-        assertThat(timeStats.get("pureGameTime").isTextual).isTrue()
-
-        // Проверяем, что поля времени в teamStatistics тоже строки
-        val team2Stats = tree.get("teamStatistics").find { it.get("teamId").asText() == team2.id.toString() }
-        assertThat(team2Stats?.get("time")?.get("totalPossessionTime")?.isTextual).isTrue()
-        assertThat(team2Stats?.get("time")?.get("totalTimeSpentOnTimeouts")?.isTextual).isTrue()
-
-        // Проверяем, что поля времени в playerStatistics тоже строки
-        val playerStats = tree.get("playerStatistics").first()
-        assertThat(playerStats.get("time").get("totalPossessionTime").isTextual).isTrue()
+            .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['200'].content['application/json'].schema['\$ref']")
+                .value("#/components/schemas/MatchStatisticsResponse"))
+            .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['200'].content['application/json'].example.time.totalTimeMs").isNumber)
+            .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['200'].content['application/json'].example.teams[0].participants[0].displayName").value("Ivan Ivanov"))
+            .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['200'].content['application/json'].example.teams[0].participants[0].attack.passes").isNumber)
+            .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['200'].content['application/json'].example.teams[0].participants[0].time.possessionTimeMs").isNumber)
+            .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['404'].content['application/problem+json'].schema['\$ref']")
+                .value("#/components/schemas/ProblemDetail"))
     }
 
     private fun createTestTeam(name: String): Pair<Team, List<Player>> {
@@ -205,10 +230,7 @@ class StatisticsControllerTest {
             Player(UUID.randomUUID(), "Игрок", "Два"),
             Player(UUID.randomUUID(), "Игрок", "Три"),
         )
-        val team = Team(
-            id = teamId,
-            name = name,
-        )
+        val team = Team(id = teamId, name = name)
         teamService.create(team)
         players.forEach { playerService.create(it) }
         players.forEachIndexed { index, player -> teamPlayerService.add(teamId, player.id, index + 1) }
@@ -216,11 +238,12 @@ class StatisticsControllerTest {
     }
 
     private fun createTestMatch(team1: Team, team2: Team): Match {
-        val match = Match(
-            id = UUID.randomUUID(),
-            teamIds = listOf(team1.id, team2.id),
-        )
+        val match = Match(id = UUID.randomUUID(), teamIds = listOf(team1.id, team2.id))
         matchService.create(match)
         return match
+    }
+
+    companion object {
+        private val MATCH_STARTED_AT = Instant.parse("2025-01-01T00:00:00Z")
     }
 }
