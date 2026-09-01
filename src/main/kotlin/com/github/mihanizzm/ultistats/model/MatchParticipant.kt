@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.IdClass
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 import java.io.Serializable
 import java.util.UUID
 
@@ -51,7 +52,7 @@ data class MatchParticipant(
     @Column
     val number: Int? = null,
 ) {
-    @get:jakarta.persistence.Transient
+    @get:Transient
     val displayName: String
         get() = when (kind) {
             MatchParticipantKind.PLAYER -> "${requireNotNull(firstName)} ${requireNotNull(lastName)}"
