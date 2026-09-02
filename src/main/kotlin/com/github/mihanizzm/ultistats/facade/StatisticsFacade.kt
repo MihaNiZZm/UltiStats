@@ -1,6 +1,7 @@
 package com.github.mihanizzm.ultistats.facade
 
 import com.github.mihanizzm.ultistats.dto.response.statistics.MatchStatisticsResponse
+import com.github.mihanizzm.ultistats.export.StatisticsZipExporter
 import com.github.mihanizzm.ultistats.mapper.StatisticsResponseMapper
 import com.github.mihanizzm.ultistats.service.MatchService
 import com.github.mihanizzm.ultistats.service.statistics.StatisticsService
@@ -12,6 +13,7 @@ class StatisticsFacade(
     private val matchService: MatchService,
     private val statisticsService: StatisticsService,
     private val responseMapper: StatisticsResponseMapper,
+    private val zipExporter: StatisticsZipExporter,
 ) {
     fun get(matchId: UUID): MatchStatisticsResponse? {
         val match = matchService.get(matchId) ?: return null
@@ -20,4 +22,6 @@ class StatisticsFacade(
             statisticsService.recalculateMatchStatistics(match),
         )
     }
+
+    fun export(matchId: UUID): ByteArray? = get(matchId)?.let(zipExporter::export)
 }

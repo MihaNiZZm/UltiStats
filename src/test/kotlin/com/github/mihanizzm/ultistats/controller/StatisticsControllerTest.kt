@@ -20,14 +20,18 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.io.ByteArrayInputStream
 import java.time.Instant
 import java.util.UUID
+import java.util.zip.ZipInputStream
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -210,6 +214,46 @@ class StatisticsControllerTest {
     }
 
     @Test
+    fun `Экспорт скачивает ZIP с CSV таблицами и snapshot данными`() {
+        val response = mockMvc.perform(
+            get("/api/v1/matches/${match.id}/statistics/export")
+                .accept("application/zip"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(content().contentType("application/zip"))
+            .andExpect(
+                header().string(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"match_${match.id}_statistics.zip\"",
+                ),
+            )
+            .andReturn()
+
+        val entries = readZipEntries(response.response.contentAsByteArray)
+        assertThat(entries.keys).containsExactly("match.csv", "teams.csv", "participants.csv")
+        assertThat(entries.getValue("match.csv")).startsWith("match_id,total_time_ms,")
+        assertThat(entries.getValue("teams.csv"))
+            .contains("${match.id},${team1.id},Команда 1,")
+            .contains("${match.id},${team2.id},Команда 2,")
+        assertThat(entries.getValue("participants.csv"))
+            .contains("${players1[0].id},PLAYER,,Игрок,Один,Игрок Один,1,")
+            .contains("UNKNOWN,1,,,Неизвестный игрок 1,,")
+    }
+
+    @Test
+    fun `Экспорт отсутствующего матча возвращает структурированный 404`() {
+        val missingId = UUID.randomUUID()
+        val instance = "/api/v1/matches/$missingId/statistics/export"
+
+        mockMvc.perform(get(instance).accept("application/zip"))
+            .andExpect(status().isNotFound)
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
+            .andExpect(jsonPath("$.detail").value("Match $missingId not found"))
+            .andExpect(jsonPath("$.instance").value(instance))
+    }
+
+    @Test
     fun `OpenAPI документирует стабильный ответ и ProblemDetail`() {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk)
@@ -221,6 +265,24 @@ class StatisticsControllerTest {
             .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['200'].content['application/json'].example.teams[0].participants[0].time.possessionTimeMs").isNumber)
             .andExpect(jsonPath("$.paths['/api/v1/matches/{matchId}/statistics'].get.responses['404'].content['application/problem+json'].schema['\$ref']")
                 .value("#/components/schemas/ProblemDetail"))
+    }
+
+    @Test
+    fun `OpenAPI документирует ZIP экспорт и ProblemDetail`() {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk)
+            .andExpect(
+                jsonPath("$.paths['/api/v1/matches/{matchId}/statistics/export'].get.responses['200'].content['application/zip'].schema.type")
+                    .value("string"),
+            )
+            .andExpect(
+                jsonPath("$.paths['/api/v1/matches/{matchId}/statistics/export'].get.responses['200'].content['application/zip'].schema.format")
+                    .value("binary"),
+            )
+            .andExpect(
+                jsonPath("$.paths['/api/v1/matches/{matchId}/statistics/export'].get.responses['404'].content['application/problem+json'].schema['\$ref']")
+                    .value("#/components/schemas/ProblemDetail"),
+            )
     }
 
     private fun createTestTeam(name: String): Pair<Team, List<Player>> {
@@ -241,6 +303,17 @@ class StatisticsControllerTest {
         val match = Match(id = UUID.randomUUID(), teamIds = listOf(team1.id, team2.id))
         matchService.create(match)
         return match
+    }
+
+    private fun readZipEntries(content: ByteArray): Map<String, String> = buildMap {
+        ZipInputStream(ByteArrayInputStream(content)).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                put(entry.name, zip.readBytes().toString(Charsets.UTF_8))
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
     }
 
     companion object {

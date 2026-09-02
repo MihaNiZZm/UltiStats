@@ -2,6 +2,7 @@ package com.github.mihanizzm.ultistats.facade
 
 import com.github.mihanizzm.ultistats.dto.response.statistics.MatchStatisticsResponse
 import com.github.mihanizzm.ultistats.dto.response.statistics.MatchTimeStatisticsResponse
+import com.github.mihanizzm.ultistats.export.StatisticsZipExporter
 import com.github.mihanizzm.ultistats.mapper.StatisticsResponseMapper
 import com.github.mihanizzm.ultistats.model.Match
 import com.github.mihanizzm.ultistats.model.statistics.MatchStatistics
@@ -21,7 +22,7 @@ class StatisticsFacadeTest {
     private val matchService = mock(MatchService::class.java)
     private val statisticsService = mock(StatisticsService::class.java)
     private val responseMapper = mock(StatisticsResponseMapper::class.java)
-    private val facade = StatisticsFacade(matchService, statisticsService, responseMapper)
+    private val facade = StatisticsFacade(matchService, statisticsService, responseMapper, StatisticsZipExporter())
 
     @Test
     fun `loads match once and propagates the same instance through calculation and mapping`() {
